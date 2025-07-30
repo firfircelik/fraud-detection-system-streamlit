@@ -119,11 +119,15 @@ streamlit run app/main.py --server.port 8502
 
 ### 🐳 Docker Deployment
 ```bash
-# Simple container
+# Option 1: Use pre-built image from GitHub Container Registry
+docker pull ghcr.io/firfircelik/fraud-detection-system-streamlit/fraud-streamlit:latest
+docker run -p 8501:8501 ghcr.io/firfircelik/fraud-detection-system-streamlit/fraud-streamlit:latest
+
+# Option 2: Build locally
 docker build -f docker/Dockerfile.streamlit -t fraud-streamlit .
 docker run -p 8501:8501 fraud-streamlit
 
-# Full stack with PostgreSQL & Redis
+# Option 3: Full stack with PostgreSQL & Redis
 docker-compose -f docker/docker-compose.yml up -d
 ```
 
