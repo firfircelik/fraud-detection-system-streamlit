@@ -235,7 +235,7 @@ jobs:
         # Performance test
         start = time.time()
         processor = CSVFraudProcessor()
-        result = processor.process_dataframe(test_data)
+        result = processor.process_batch(test_data)
         end = time.time()
         
         print(f'✅ Processed 1000 transactions in {end-start:.2f}s')
