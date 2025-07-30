@@ -1,0 +1,7 @@
+# Core requirements for Streamlit deployment
+streamlit==1.47.1
+pandas==2.3.1
+numpy==2.3.2
+scikit-learn==1.7.1
+plotly==6.2.0
+requests==2.32.4
