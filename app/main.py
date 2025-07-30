@@ -1028,7 +1028,11 @@ def show_transaction_tester():
                 if 'processing_results' in st.session_state:
                     try:
                         # Import CSV processor for local analysis
-                        from fraud_processor import CSVFraudProcessor
+                        # Try different import paths for different environments
+                        try:
+                            from fraud_processor import CSVFraudProcessor
+                        except ImportError:
+                            from .fraud_processor import CSVFraudProcessor
                         processor = CSVFraudProcessor()
                         
                         # Create test transaction data
@@ -1926,7 +1930,11 @@ def show_csv_processor():
     try:
         import sys
         sys.path.append('.')
-        from fraud_processor import CSVFraudProcessor
+        # Try different import paths for different environments
+        try:
+            from fraud_processor import CSVFraudProcessor
+        except ImportError:
+            from .fraud_processor import CSVFraudProcessor
         processor = CSVFraudProcessor()
     except ImportError as e:
         st.error(f"❌ CSV Processor not available: {str(e)}")
