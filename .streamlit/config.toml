@@ -1,32 +1,21 @@
 [server]
-# Server configuration
+# Server configuration for production
 maxUploadSize = 500
 enableCORS = false
 enableXsrfProtection = false
-address = "0.0.0.0"
-port = 8502
 
 [browser]
-# Browser configuration
+# Browser configuration  
 gatherUsageStats = false
-serverAddress = "localhost"
-serverPort = 8502
 
 [global]
 # Global configuration
 developmentMode = false
 
 [theme]
-# UI theme
+# UI theme for better visibility
 primaryColor = "#FF6B6B"
 backgroundColor = "#FFFFFF"
 secondaryBackgroundColor = "#F0F2F6"
 textColor = "#262730"
 font = "sans serif"
-
-[logger]
-# Logging configuration
-level = "info"
-messageFormat = "[%(asctime)s] %(levelname)s in %(module)s: %(message)s"
-
-# Removed deprecated client configs - they're handled automatically by modern Streamlit
