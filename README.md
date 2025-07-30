@@ -1,9 +1,31 @@
-# 🚨 Fraud Detection System - Streamlit
+# 🚨 Fraud Detection System
+
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://fraud-detection-system-app.streamlit.app)
+[![CI](https://github.com/firfircelik/fraud-detection-system-streamlit/workflows/🚨%20Fraud%20Detection%20CI/badge.svg)](https://github.com/firfircelik/fraud-detection-system-streamlit/actions)
+[![GitHub stars](https://img.shields.io/github/stars/firfircelik/fraud-detection-system-streamlit?style=social)](https://github.com/firfircelik/fraud-detection-system-streamlit/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/firfircelik/fraud-detection-system-streamlit?style=social)](https://github.com/firfircelik/fraud-detection-system-streamlit/network)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+> **Real-time fraud detection dashboard built with Streamlit. Upload CSV, detect fraud patterns, visualize risks instantly!**
+
+## 🎯 **Try It Now**
+**➡️ [Live Demo](https://fraud-detection-system-app.streamlit.app) ⬅️**
+
+![Fraud Detection Dashboard](https://via.placeholder.com/800x400/1f77b4/ffffff?text=Fraud+Detection+Dashboard)
+
+## ✨ **Key Features**
+
+- 🚀 **One-Click Analysis** - Just upload your CSV file
+- 📊 **Real-time Dashboard** - Interactive charts and graphs  
+- 🎯 **Smart Detection** - ML-powered fraud scoring
+- 🌙 **Dark Mode** - Beautiful responsive design
+- 📱 **Mobile Friendly** - Works everywhere
+- 🔒 **Privacy First** - No data stored, client-side processingection System - Streamlit
 
 Advanced fraud detection dashboard built with Streamlit for real-time transaction analysis.
 
 ## 🚀 Live Demo
-**Streamlit Cloud:** [Coming Soon]
+**➡️ [Try the App Now!](https://fraud-detection-system-app.streamlit.app) ⬅️**
 
 ## ✨ Features
 - 📊 **Real-time Dashboard** - Interactive fraud detection analytics

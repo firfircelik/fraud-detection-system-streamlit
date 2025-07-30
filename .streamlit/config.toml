@@ -15,8 +15,6 @@ serverPort = 8502
 [global]
 # Global configuration
 developmentMode = false
-dataFrameSerialization = "legacy"
-sharingMode = "off"
 
 [theme]
 # UI theme
@@ -31,8 +29,4 @@ font = "sans serif"
 level = "info"
 messageFormat = "[%(asctime)s] %(levelname)s in %(module)s: %(message)s"
 
-[client]
-# Client configuration
-caching = true
-displayEnabled = true
-showErrorDetails = true
+# Removed deprecated client configs - they're handled automatically by modern Streamlit
