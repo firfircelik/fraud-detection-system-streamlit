@@ -1,0 +1,74 @@
+{
+  "transactions": [
+    {
+      "transactionId": "txn_001",
+      "userId": "user_123",
+      "amount": 125.50,
+      "currency": "USD",
+      "merchantId": "merchant_456",
+      "timestamp": "2024-01-15T10:30:00Z",
+      "location": {
+        "latitude": 40.7128,
+        "longitude": -74.0060
+      },
+      "deviceId": "device_789",
+      "ipAddress": "192.168.1.100"
+    },
+    {
+      "transactionId": "txn_002",
+      "userId": "user_456",
+      "amount": 2499.99,
+      "currency": "USD",
+      "merchantId": "merchant_789",
+      "timestamp": "2024-01-15T11:15:30Z",
+      "location": {
+        "latitude": 34.0522,
+        "longitude": -118.2437
+      },
+      "deviceId": "device_123",
+      "ipAddress": "10.0.0.50"
+    },
+    {
+      "transactionId": "txn_003",
+      "userId": "user_789",
+      "amount": 19.99,
+      "currency": "USD",
+      "merchantId": "merchant_123",
+      "timestamp": "2024-01-15T12:45:15Z",
+      "location": {
+        "latitude": 51.5074,
+        "longitude": -0.1278
+      },
+      "deviceId": "device_456",
+      "ipAddress": "172.16.0.25"
+    },
+    {
+      "transactionId": "txn_004",
+      "userId": "user_123",
+      "amount": 999.00,
+      "currency": "USD",
+      "merchantId": "merchant_999",
+      "timestamp": "2024-01-15T14:20:45Z",
+      "location": {
+        "latitude": 35.6762,
+        "longitude": 139.6503
+      },
+      "deviceId": "device_789",
+      "ipAddress": "203.0.113.45"
+    },
+    {
+      "transactionId": "txn_005",
+      "userId": "user_321",
+      "amount": 7500.00,
+      "currency": "USD",
+      "merchantId": "merchant_777",
+      "timestamp": "2024-01-15T15:30:00Z",
+      "location": {
+        "latitude": 25.7617,
+        "longitude": -80.1918
+      },
+      "deviceId": "device_888",
+      "ipAddress": "198.51.100.25"
+    }
+  ]
+}

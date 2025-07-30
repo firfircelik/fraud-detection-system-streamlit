@@ -54,22 +54,16 @@ jobs:
 
     - name: Run tests
       run: |
-        # Create tests directory if it doesn't exist
-        mkdir -p tests
-        # Run tests if they exist, otherwise just verify imports
-        if [ -f "tests/test_*.py" ]; then
+        # Install test dependencies
+        pip install pytest pytest-cov
+        
+        # Always run pytest if tests directory exists
+        if [ -d "tests" ] && [ "$(ls -A tests/test_*.py 2>/dev/null)" ]; then
+          echo "🧪 Running pytest tests..."
           python -m pytest tests/ -v --cov=. --cov-report=xml
         else
-          echo "⚠️ No test files found, running basic import tests"
-          python -c "
-          try:
-              from app.main import *
-              from app.fraud_processor import *
-              print('✅ All imports successful')
-          except Exception as e:
-              print(f'❌ Import error: {e}')
-              exit(1)
-          "
+          echo "⚠️ No pytest test files found, running basic verification"
+          python -c "from app.main import *; from app.fraud_processor import *; print('✅ All imports successful')"
         fi
 
     - name: Upload coverage to Codecov
@@ -96,19 +90,11 @@ jobs:
 
     - name: Test Streamlit app
       run: |
-        python -c "
-        import streamlit as st
-        from app.main import main
-        print('✅ Streamlit app imports successfully')
-        "
+        python -c "import streamlit as st; from app.main import main; print('✅ Streamlit app imports successfully')"
 
     - name: Test fraud processor
       run: |
-        python -c "
-        from app.fraud_processor import CSVFraudProcessor
-        processor = CSVFraudProcessor()
-        print('✅ Fraud processor works')
-        "
+        python -c "from app.fraud_processor import CSVFraudProcessor; processor = CSVFraudProcessor(); print('✅ Fraud processor works')"
 
   security-scan:
     runs-on: ubuntu-latest
@@ -220,27 +206,7 @@ jobs:
     - name: Run performance tests
       run: |
         echo "🧪 Performance testing for Streamlit app"
-        python -c "
-        import pandas as pd
-        import time
-        from app.fraud_processor import CSVFraudProcessor
-        
-        # Create test data
-        test_data = pd.DataFrame({
-            'transaction_id': range(1000),
-            'amount': [100.0] * 1000,
-            'merchant_id': ['test_merchant'] * 1000
-        })
-        
-        # Performance test
-        start = time.time()
-        processor = CSVFraudProcessor()
-        result = processor.process_batch(test_data)
-        end = time.time()
-        
-        print(f'✅ Processed 1000 transactions in {end-start:.2f}s')
-        print(f'⚡ Throughput: {1000/(end-start):.0f} TPS')
-        "
+        python3 -c "import pandas as pd; import time; from app.fraud_processor import CSVFraudProcessor; test_data = pd.DataFrame({'transaction_id': range(1000), 'amount': [100.0] * 1000, 'merchant_id': ['test_merchant'] * 1000}); start = time.time(); processor = CSVFraudProcessor(); result = processor.process_batch(test_data); end = time.time(); print(f'✅ Processed 1000 transactions in {end-start:.2f}s'); print(f'⚡ Throughput: {1000/(end-start):.0f} TPS')"
 
   notify:
     needs: [deploy-streamlit]
