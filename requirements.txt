@@ -13,6 +13,13 @@ matplotlib>=3.7.0
 # Performance and optimization
 numba>=0.58.0
 
+# Data processing and analysis
+scipy>=1.11.0
+statsmodels>=0.14.0
+
+# Geographic analysis
+geopy>=2.3.0
+
 # Testing requirements
 pytest>=8.0.0
 

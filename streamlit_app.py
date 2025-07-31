@@ -484,12 +484,13 @@ with st.sidebar:
         st.rerun()
 
 # Main tabs - Enhanced with more features
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "📊 Real-time Dashboard", 
     "📈 Advanced Analytics", 
     "🧪 Transaction Tester", 
     "📄 CSV Processor",
     "🚨 Alert Center",
+    "📊 Data Explorer",
     "⚙️ System Settings"
 ])
 
@@ -694,192 +695,123 @@ with tab2:
     if st.session_state.fraud_data is not None:
         df_processed = st.session_state.fraud_data
         
-        # Time-based analysis
-        st.subheader("⏰ Temporal Analysis")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Daily fraud pattern
-            df_processed['date'] = pd.to_datetime(df_processed['timestamp']).dt.date
-            daily_stats = df_processed.groupby('date').agg({
-                'fraud_score': 'mean',
-                'transaction_id': 'count',
-                'amount': 'sum'
-            }).reset_index()
+        # Import and use advanced analytics
+        try:
+            from app.advanced_analytics import show_advanced_analytics_dashboard
+            show_advanced_analytics_dashboard(df_processed)
+        except ImportError:
+            st.error("❌ Advanced analytics module not found. Using basic analytics.")
             
-            fig = px.line(
-                daily_stats,
-                x='date',
-                y='fraud_score',
-                title="Daily Fraud Score Trend",
-                markers=True,
-                hover_data=['transaction_id', 'amount']
-            )
-            fig.update_layout(height=350)
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            # Day of week analysis
-            df_processed['day_of_week'] = pd.to_datetime(df_processed['timestamp']).dt.day_name()
-            dow_stats = df_processed.groupby('day_of_week').agg({
-                'fraud_score': 'mean',
-                'transaction_id': 'count'
-            }).reset_index()
+            # Fallback to basic analytics
+            st.subheader("⏰ Basic Temporal Analysis")
             
-            # Reorder days
-            day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-            dow_stats['day_of_week'] = pd.Categorical(dow_stats['day_of_week'], categories=day_order, ordered=True)
-            dow_stats = dow_stats.sort_values('day_of_week')
+            col1, col2 = st.columns(2)
             
-            fig = px.bar(
-                dow_stats,
-                x='day_of_week',
-                y='fraud_score',
-                title="Fraud Score by Day of Week",
-                color='fraud_score',
-                color_continuous_scale='Reds'
-            )
-            fig.update_layout(height=350)
-            st.plotly_chart(fig, use_container_width=True)
-        
-        # Amount analysis
-        st.divider()
-        st.subheader("💰 Financial Analysis")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Amount vs fraud score correlation
-            sample_data = df_processed.sample(min(1000, len(df_processed)))
+            with col1:
+                # Daily fraud pattern
+                df_processed['date'] = pd.to_datetime(df_processed['timestamp']).dt.date
+                daily_stats = df_processed.groupby('date').agg({
+                    'fraud_score': 'mean',
+                    'transaction_id': 'count',
+                    'amount': 'sum'
+                }).reset_index()
+                
+                fig = px.line(
+                    daily_stats,
+                    x='date',
+                    y='fraud_score',
+                    title="Daily Fraud Score Trend",
+                    markers=True,
+                    hover_data=['transaction_id', 'amount']
+                )
+                fig.update_layout(height=350)
+                st.plotly_chart(fig, use_container_width=True)
             
-            fig = px.scatter(
-                sample_data,
-                x='amount',
-                y='fraud_score',
-                color='risk_level',
-                title="Transaction Amount vs Fraud Score",
-                color_discrete_map={
-                    'MINIMAL': '#2ed573',
-                    'LOW': '#7bed9f',
-                    'MEDIUM': '#ffa502',
-                    'HIGH': '#ff6348',
-                    'CRITICAL': '#ff4757'
-                },
-                hover_data=['transaction_id', 'merchant_id']
-            )
-            fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            # Amount distribution by decision
-            fig = px.box(
-                df_processed,
-                x='decision',
-                y='amount',
-                title="Amount Distribution by Decision",
-                color='decision',
-                color_discrete_map={
-                    'APPROVED': '#2ed573',
-                    'REVIEW': '#ffa502',
-                    'DECLINED': '#ff4757'
-                }
-            )
-            fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
-        
-        # Merchant analysis
-        st.divider()
-        st.subheader("🏪 Merchant Risk Analysis")
-        
-        merchant_stats = df_processed.groupby('merchant_id').agg({
-            'fraud_score': ['mean', 'count'],
-            'amount': ['sum', 'mean'],
-            'decision': lambda x: (x == 'DECLINED').sum()
-        }).round(3)
-        
-        merchant_stats.columns = ['avg_fraud_score', 'transaction_count', 'total_amount', 'avg_amount', 'declined_count']
-        merchant_stats = merchant_stats.reset_index()
-        merchant_stats = merchant_stats[merchant_stats['transaction_count'] >= 10].sort_values('avg_fraud_score', ascending=False)
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Top risky merchants
-            top_risky = merchant_stats.head(15)
-            
-            fig = px.bar(
-                top_risky,
-                x='avg_fraud_score',
-                y='merchant_id',
-                orientation='h',
-                title="Top 15 Riskiest Merchants",
-                color='avg_fraud_score',
-                color_continuous_scale='Reds',
-                hover_data=['transaction_count', 'declined_count']
-            )
-            fig.update_layout(height=500)
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            # Merchant volume vs risk
-            fig = px.scatter(
-                merchant_stats,
-                x='transaction_count',
-                y='avg_fraud_score',
-                size='total_amount',
-                hover_name='merchant_id',
-                title="Merchant Volume vs Risk Score",
-                color='declined_count',
-                color_continuous_scale='Reds'
-            )
-            fig.update_layout(height=500)
-            st.plotly_chart(fig, use_container_width=True)
-        
-        # Performance metrics
-        st.divider()
-        st.subheader("🎯 Model Performance Analysis")
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.write("**Classification Performance**")
-            
-            # Simulate confusion matrix metrics
-            total_fraud = len(df_processed[df_processed['decision'] == 'DECLINED'])
-            total_approved = len(df_processed[df_processed['decision'] == 'APPROVED'])
-            
-            # Simulate precision/recall
-            precision = 0.87 + np.random.uniform(-0.05, 0.05)
-            recall = 0.82 + np.random.uniform(-0.05, 0.05)
-            f1_score = 2 * (precision * recall) / (precision + recall)
-            
-            st.metric("Precision", f"{precision:.1%}")
-            st.metric("Recall", f"{recall:.1%}")
-            st.metric("F1-Score", f"{f1_score:.1%}")
-        
-        with col2:
-            st.write("**Business Impact**")
-            
-            total_blocked = df_processed[df_processed['decision'] == 'DECLINED']['amount'].sum()
-            total_volume = df_processed['amount'].sum()
-            
-            st.metric("Fraud Blocked", f"${total_blocked:,.0f}")
-            st.metric("Total Volume", f"${total_volume:,.0f}")
-            st.metric("Protection Rate", f"{total_blocked/total_volume*100:.2f}%")
-        
-        with col3:
-            st.write("**Operational Metrics**")
-            
-            automation_rate = len(df_processed[df_processed['decision'].isin(['APPROVED', 'DECLINED'])]) / len(df_processed) * 100
-            manual_review_rate = len(df_processed[df_processed['decision'] == 'REVIEW']) / len(df_processed) * 100
-            
-            st.metric("Automation Rate", f"{automation_rate:.1f}%")
-            st.metric("Manual Review", f"{manual_review_rate:.1f}%")
-            st.metric("Processing Speed", "1,200 tx/min")
+            with col2:
+                # Day of week analysis
+                df_processed['day_of_week'] = pd.to_datetime(df_processed['timestamp']).dt.day_name()
+                dow_stats = df_processed.groupby('day_of_week').agg({
+                    'fraud_score': 'mean',
+                    'transaction_id': 'count'
+                }).reset_index()
+                
+                # Reorder days
+                day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+                dow_stats['day_of_week'] = pd.Categorical(dow_stats['day_of_week'], categories=day_order, ordered=True)
+                dow_stats = dow_stats.sort_values('day_of_week')
+                
+                fig = px.bar(
+                    dow_stats,
+                    x='day_of_week',
+                    y='fraud_score',
+                    title="Fraud Score by Day of Week",
+                    color='fraud_score',
+                    color_continuous_scale='Reds'
+                )
+                fig.update_layout(height=350)
+                st.plotly_chart(fig, use_container_width=True)
     
     else:
         st.info("📊 Please load data in the Real-time Dashboard tab first to see analytics.")
+        
+        # Show sample analytics with demo data
+        st.subheader("🎲 Demo Analytics")
+        
+        if st.button("🚀 Load Demo Data for Analytics"):
+            with st.spinner("Loading demo data..."):
+                # Load sample data from files
+                try:
+                    sample_df = pd.read_csv('data/sample_transactions.csv')
+                    if len(sample_df) > 0:
+                        # Process with fraud detector
+                        processed_df = fraud_detector.process_csv_batch(sample_df, sample_size=1000)
+                        st.session_state.fraud_data = processed_df
+                        
+                        st.success("✅ Demo data loaded! Refresh to see analytics.")
+                        st.rerun()
+                    else:
+                        st.error("❌ Sample data file is empty")
+                except FileNotFoundError:
+                    st.error("❌ Sample data file not found")
+                except Exception as e:
+                    st.error(f"❌ Error loading demo data: {str(e)}")
+        
+        # Show what analytics are available
+        st.info("""
+        **🔍 Available Advanced Analytics:**
+        
+        📊 **Overview Analysis**
+        - Comprehensive fraud metrics
+        - Risk distribution analysis
+        - Financial impact assessment
+        
+        ⏰ **Temporal Analysis**
+        - Hourly fraud patterns
+        - Day-of-week trends
+        - Time series analysis
+        - Peak hours detection
+        
+        🌍 **Geographic Analysis**
+        - Global fraud distribution maps
+        - Regional risk analysis
+        - Distance-based patterns
+        
+        👤 **Behavioral Analysis**
+        - User transaction patterns
+        - Velocity analysis
+        - Device and IP analysis
+        
+        💰 **Financial Analysis**
+        - Amount distribution analysis
+        - High-value transaction patterns
+        - Merchant financial profiling
+        
+        🤖 **ML Insights**
+        - Feature importance analysis
+        - Anomaly detection
+        - Model performance metrics
+        - Improvement recommendations
+        """)
 
 with tab3:
     st.header("🧪 Advanced Transaction Tester")
@@ -1619,19 +1551,24 @@ with tab4:
                     st.divider()
                     st.subheader("📈 Advanced Analysis Charts")
                     
-                    # Create comprehensive charts
-                    fig_risk, fig_score, fig_scatter, fig_hourly = create_advanced_charts(df_processed)
-                    
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.plotly_chart(fig_risk, use_container_width=True)
-                        st.plotly_chart(fig_scatter, use_container_width=True)
-                    
-                    with col2:
-                        st.plotly_chart(fig_score, use_container_width=True)
-                        if fig_hourly:
-                            st.plotly_chart(fig_hourly, use_container_width=True)
+                    # Use advanced analytics if available
+                    try:
+                        from app.advanced_analytics import show_advanced_analytics_dashboard
+                        show_advanced_analytics_dashboard(df_processed)
+                    except ImportError:
+                        # Fallback to basic charts
+                        fig_risk, fig_score, fig_scatter, fig_hourly = create_advanced_charts(df_processed)
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.plotly_chart(fig_risk, use_container_width=True)
+                            st.plotly_chart(fig_scatter, use_container_width=True)
+                        
+                        with col2:
+                            st.plotly_chart(fig_score, use_container_width=True)
+                            if fig_hourly:
+                                st.plotly_chart(fig_hourly, use_container_width=True)
                 
                 # Merchant analysis
                 if include_merchant_analysis and 'merchant_id' in df_processed.columns:
@@ -2001,6 +1938,65 @@ with tab5:
         st.metric("💻 System Load", f"{load_pct:.0f}%")
 
 with tab6:
+    st.header("📊 Advanced Data Explorer")
+    
+    # Import and use data loader
+    try:
+        from app.data_loader import show_data_loader_interface
+        show_data_loader_interface()
+    except ImportError:
+        st.error("❌ Data loader module not found")
+        
+        # Fallback interface
+        st.subheader("📁 Available Datasets")
+        
+        # List available datasets manually
+        data_files = []
+        
+        # Check data directory
+        if os.path.exists("data"):
+            for file in os.listdir("data"):
+                if file.endswith(('.csv', '.json')):
+                    filepath = os.path.join("data", file)
+                    size = os.path.getsize(filepath) / (1024 * 1024)  # MB
+                    data_files.append({"name": file, "size_mb": size, "location": "data"})
+        
+        # Check massive directory
+        if os.path.exists("data/massive"):
+            for file in os.listdir("data/massive"):
+                if file.endswith(('.csv', '.json')):
+                    filepath = os.path.join("data/massive", file)
+                    size = os.path.getsize(filepath) / (1024 * 1024)  # MB
+                    data_files.append({"name": file, "size_mb": size, "location": "massive"})
+        
+        if data_files:
+            st.write("**Available Datasets:**")
+            
+            for file_info in data_files:
+                with st.expander(f"📁 {file_info['name']} ({file_info['size_mb']:.1f} MB)"):
+                    st.write(f"**Location:** {file_info['location']}")
+                    st.write(f"**Size:** {file_info['size_mb']:.1f} MB")
+                    
+                    if st.button(f"Load {file_info['name']}", key=f"load_{file_info['name']}"):
+                        st.info("💡 Use the CSV Processor tab to load and analyze this dataset")
+        else:
+            st.info("📂 No datasets found in data directories")
+        
+        # Dataset upload
+        st.divider()
+        st.subheader("📤 Upload New Dataset")
+        
+        uploaded_file = st.file_uploader(
+            "Upload Dataset",
+            type=['csv', 'json'],
+            help="Upload your own dataset for analysis"
+        )
+        
+        if uploaded_file:
+            st.success(f"✅ File uploaded: {uploaded_file.name}")
+            st.info("💡 Go to CSV Processor tab to analyze the uploaded file")
+
+with tab7:
     st.header("⚙️ System Settings & Configuration")
     
     # System configuration
