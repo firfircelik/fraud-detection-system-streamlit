@@ -23,38 +23,51 @@ class AdvancedDataLoader:
         self.supported_formats = ['.csv', '.json', '.jsonl']
     
     def get_available_datasets(self) -> List[Dict]:
-        """Get list of available datasets"""
+        """Get list of available datasets (only in development mode)"""
         datasets = []
         
-        # Check regular data directory
-        if os.path.exists(self.data_dir):
-            for filename in os.listdir(self.data_dir):
-                if any(filename.endswith(ext) for ext in self.supported_formats):
-                    filepath = os.path.join(self.data_dir, filename)
-                    size = os.path.getsize(filepath)
-                    datasets.append({
-                        'name': filename,
-                        'path': filepath,
-                        'size_bytes': size,
-                        'size_mb': round(size / (1024 * 1024), 2),
-                        'location': 'data',
-                        'type': 'sample'
-                    })
+        # Only show local datasets in development mode
+        if os.getenv('STREAMLIT_ENV') == 'production':
+            return datasets
         
-        # Check massive data directory
-        if os.path.exists(self.massive_dir):
-            for filename in os.listdir(self.massive_dir):
-                if any(filename.endswith(ext) for ext in self.supported_formats):
-                    filepath = os.path.join(self.massive_dir, filename)
-                    size = os.path.getsize(filepath)
-                    datasets.append({
-                        'name': filename,
-                        'path': filepath,
-                        'size_bytes': size,
-                        'size_mb': round(size / (1024 * 1024), 2),
-                        'location': 'massive',
-                        'type': 'large'
-                    })
+        try:
+            # Check regular data directory
+            if os.path.exists(self.data_dir):
+                for filename in os.listdir(self.data_dir):
+                    if any(filename.endswith(ext) for ext in self.supported_formats):
+                        filepath = os.path.join(self.data_dir, filename)
+                        try:
+                            size = os.path.getsize(filepath)
+                            datasets.append({
+                                'name': filename,
+                                'path': filepath,
+                                'size_bytes': size,
+                                'size_mb': round(size / (1024 * 1024), 2),
+                                'location': 'data',
+                                'type': 'sample'
+                            })
+                        except:
+                            continue
+            
+            # Check massive data directory
+            if os.path.exists(self.massive_dir):
+                for filename in os.listdir(self.massive_dir):
+                    if any(filename.endswith(ext) for ext in self.supported_formats):
+                        filepath = os.path.join(self.massive_dir, filename)
+                        try:
+                            size = os.path.getsize(filepath)
+                            datasets.append({
+                                'name': filename,
+                                'path': filepath,
+                                'size_bytes': size,
+                                'size_mb': round(size / (1024 * 1024), 2),
+                                'location': 'massive',
+                                'type': 'large'
+                            })
+                        except:
+                            continue
+        except Exception as e:
+            st.warning(f"⚠️ Could not access local datasets: {str(e)}")
         
         return sorted(datasets, key=lambda x: x['size_bytes'], reverse=True)
     
@@ -465,13 +478,26 @@ def show_data_loader_interface():
                         'metadata': selected_dataset
                     }
                     
+                    # Store in central data manager
+                    try:
+                        from app.data_manager import data_manager
+                        success = data_manager.load_csv_data(
+                            df, 
+                            filename=selected_dataset['name'],
+                            source="data_explorer"
+                        )
+                        if success:
+                            st.success("✅ Data loaded into central system!")
+                    except ImportError:
+                        pass
+                    
                     # Option to proceed with fraud analysis
                     st.divider()
                     
                     if st.button("🔍 Proceed to Fraud Analysis", type="primary"):
                         st.session_state['fraud_data'] = df
                         st.success("✅ Dataset loaded for fraud analysis!")
-                        st.info("💡 Go to the 'Advanced Analytics' tab to see comprehensive analysis.")
+                        st.info("💡 Data is now available in all tabs. Go to CSV Processor to process it, then view results in Advanced Analytics.")
                 
                 else:
                     st.error("❌ Failed to load dataset")

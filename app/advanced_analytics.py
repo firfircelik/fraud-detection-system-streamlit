@@ -10,13 +10,26 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import seaborn as sns
-import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 import json
 from typing import Dict, List, Tuple, Optional
 import warnings
 warnings.filterwarnings('ignore')
+
+# Optional imports
+try:
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+    HAS_SEABORN = True
+except ImportError:
+    HAS_SEABORN = False
+    st.warning("⚠️ Seaborn/Matplotlib not available. Some visualizations may be limited.")
+
+try:
+    import scipy.stats as stats
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
 
 class AdvancedFraudAnalytics:
     """Advanced fraud detection analytics class"""
@@ -33,10 +46,32 @@ class AdvancedFraudAnalytics:
             'DECLINED': '#ff4757'
         }
     
+    def get_count_column(self, df: pd.DataFrame) -> str:
+        """Get a suitable column for counting transactions"""
+        # Check for common transaction ID columns
+        for col in ['transaction_id', 'id', 'index', 'txn_id', 'trans_id']:
+            if col in df.columns:
+                return col
+        
+        # Check for any column with 'id' in the name
+        for col in df.columns:
+            if 'id' in col.lower():
+                return col
+        
+        # Use the first column as fallback
+        if len(df.columns) > 0:
+            return df.columns[0]
+        else:
+            raise ValueError("DataFrame has no columns")
+    
     def comprehensive_fraud_analysis(self, df: pd.DataFrame) -> Dict:
         """Comprehensive fraud analysis dashboard"""
         
         st.header("🔍 Comprehensive Fraud Analysis Dashboard")
+        
+        if df is None or df.empty:
+            st.error("❌ No data available for analysis")
+            return {}
         
         # Create tabs for different analysis types
         tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
@@ -65,6 +100,10 @@ class AdvancedFraudAnalytics:
     def show_overview_analysis(self, df: pd.DataFrame):
         """Show comprehensive overview analysis"""
         st.subheader("📊 Fraud Detection Overview")
+        
+        if df.empty:
+            st.warning("⚠️ No data available for overview analysis")
+            return
         
         # Key metrics
         total_transactions = len(df)
@@ -194,16 +233,25 @@ class AdvancedFraudAnalytics:
         """Show temporal fraud analysis"""
         st.subheader("⏰ Temporal Fraud Analysis")
         
+        if df.empty:
+            st.warning("⚠️ No data available for temporal analysis")
+            return
+        
         if 'timestamp' not in df.columns:
             st.warning("⚠️ Timestamp data not available for temporal analysis")
             return
         
-        # Convert timestamp
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
-        df['hour'] = df['timestamp'].dt.hour
-        df['day_of_week'] = df['timestamp'].dt.day_name()
-        df['date'] = df['timestamp'].dt.date
-        df['month'] = df['timestamp'].dt.month
+        try:
+            # Convert timestamp
+            df = df.copy()  # Work with a copy to avoid modifying original
+            df['timestamp'] = pd.to_datetime(df['timestamp'])
+            df['hour'] = df['timestamp'].dt.hour
+            df['day_of_week'] = df['timestamp'].dt.day_name()
+            df['date'] = df['timestamp'].dt.date
+            df['month'] = df['timestamp'].dt.month
+        except Exception as e:
+            st.error(f"❌ Error processing timestamp data: {str(e)}")
+            return
         
         # Hourly analysis
         col1, col2 = st.columns(2)
@@ -211,13 +259,33 @@ class AdvancedFraudAnalytics:
         with col1:
             st.write("**Fraud by Hour of Day**")
             
-            hourly_data = df.groupby('hour').agg({
-                'transaction_id': 'count',
-                'is_fraud': 'sum' if 'is_fraud' in df.columns else lambda x: 0
-            }).reset_index()
+            # Find a suitable column for counting
+            count_column = None
+            for col in ['transaction_id', 'id', 'index']:
+                if col in df.columns:
+                    count_column = col
+                    break
+            
+            if count_column is None:
+                # Use the first column as count column
+                count_column = df.columns[0]
+            
+            # Create aggregation dict dynamically
+            agg_dict = {count_column: 'count'}
+            if 'is_fraud' in df.columns:
+                agg_dict['is_fraud'] = 'sum'
+            
+            hourly_data = df.groupby('hour').agg(agg_dict).reset_index()
+            
+            # Add is_fraud column if it doesn't exist
+            if 'is_fraud' not in hourly_data.columns:
+                hourly_data['is_fraud'] = 0
+            
+            # Rename for consistency
+            hourly_data = hourly_data.rename(columns={count_column: 'transaction_count'})
             
             if 'is_fraud' in df.columns:
-                hourly_data['fraud_rate'] = (hourly_data['is_fraud'] / hourly_data['transaction_id']) * 100
+                hourly_data['fraud_rate'] = (hourly_data['is_fraud'] / hourly_data['transaction_count']) * 100
             else:
                 # Synthetic fraud rate based on hour (higher at night)
                 hourly_data['fraud_rate'] = hourly_data['hour'].apply(
@@ -227,7 +295,7 @@ class AdvancedFraudAnalytics:
             fig = make_subplots(specs=[[{"secondary_y": True}]])
             
             fig.add_trace(
-                go.Bar(x=hourly_data['hour'], y=hourly_data['transaction_id'], 
+                go.Bar(x=hourly_data['hour'], y=hourly_data['transaction_count'], 
                       name='Transaction Count', opacity=0.7),
                 secondary_y=False,
             )
@@ -251,13 +319,21 @@ class AdvancedFraudAnalytics:
             
             # Day of week analysis
             day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-            daily_data = df.groupby('day_of_week').agg({
-                'transaction_id': 'count',
-                'is_fraud': 'sum' if 'is_fraud' in df.columns else lambda x: 0
-            }).reset_index()
+            count_column = self.get_count_column(df)
+            # Create aggregation dict dynamically
+            agg_dict = {count_column: 'count'}
+            if 'is_fraud' in df.columns:
+                agg_dict['is_fraud'] = 'sum'
+            
+            daily_data = df.groupby('day_of_week').agg(agg_dict).reset_index()
+            daily_data = daily_data.rename(columns={count_column: 'transaction_count'})
+            
+            # Add is_fraud column if it doesn't exist
+            if 'is_fraud' not in daily_data.columns:
+                daily_data['is_fraud'] = 0
             
             if 'is_fraud' in df.columns:
-                daily_data['fraud_rate'] = (daily_data['is_fraud'] / daily_data['transaction_id']) * 100
+                daily_data['fraud_rate'] = (daily_data['is_fraud'] / daily_data['transaction_count']) * 100
             else:
                 # Synthetic fraud rate (higher on weekends)
                 daily_data['fraud_rate'] = daily_data['day_of_week'].apply(
@@ -279,14 +355,25 @@ class AdvancedFraudAnalytics:
         st.write("**Time Series Analysis**")
         
         # Daily fraud trend
-        daily_trend = df.groupby('date').agg({
-            'transaction_id': 'count',
-            'is_fraud': 'sum' if 'is_fraud' in df.columns else lambda x: 0,
-            'amount': 'sum' if 'amount' in df.columns else lambda x: 0
-        }).reset_index()
+        count_column = self.get_count_column(df)
+        # Create aggregation dict dynamically
+        agg_dict = {count_column: 'count'}
+        if 'is_fraud' in df.columns:
+            agg_dict['is_fraud'] = 'sum'
+        if 'amount' in df.columns:
+            agg_dict['amount'] = 'sum'
+        
+        daily_trend = df.groupby('date').agg(agg_dict).reset_index()
+        daily_trend = daily_trend.rename(columns={count_column: 'transaction_count'})
+        
+        # Add missing columns
+        if 'is_fraud' not in daily_trend.columns:
+            daily_trend['is_fraud'] = 0
+        if 'amount' not in daily_trend.columns:
+            daily_trend['amount'] = 0
         
         if 'is_fraud' in df.columns:
-            daily_trend['fraud_rate'] = (daily_trend['is_fraud'] / daily_trend['transaction_id']) * 100
+            daily_trend['fraud_rate'] = (daily_trend['is_fraud'] / daily_trend['transaction_count']) * 100
         else:
             # Add some randomness for demo
             np.random.seed(42)
@@ -328,6 +415,10 @@ class AdvancedFraudAnalytics:
         """Show geographic fraud analysis"""
         st.subheader("🌍 Geographic Fraud Analysis")
         
+        if df.empty:
+            st.warning("⚠️ No data available for geographic analysis")
+            return
+        
         if not any(col in df.columns for col in ['lat', 'lon', 'latitude', 'longitude']):
             st.warning("⚠️ Geographic data (lat/lon) not available")
             return
@@ -365,7 +456,7 @@ class AdvancedFraudAnalytics:
             lat='lat', lon='lon',
             color='is_fraud',
             size='amount' if 'amount' in geo_sample.columns else None,
-            hover_data=['transaction_id', 'merchant_id'] if 'merchant_id' in geo_sample.columns else ['transaction_id'],
+            hover_data=[self.get_count_column(geo_sample), 'merchant_id'] if 'merchant_id' in geo_sample.columns else [self.get_count_column(geo_sample)],
             color_discrete_map={0: '#2ed573', 1: '#ff4757'},
             title="Transaction Locations (Red = Fraud, Green = Legitimate)",
             mapbox_style='carto-darkmatter',
@@ -384,13 +475,21 @@ class AdvancedFraudAnalytics:
         with col1:
             # Country/Region analysis (simplified by lat/lon ranges)
             geo_df['region'] = geo_df.apply(self._get_region_from_coords, axis=1)
-            region_stats = geo_df.groupby('region').agg({
-                'transaction_id': 'count',
-                'is_fraud': 'sum' if 'is_fraud' in geo_df.columns else lambda x: 0
-            }).reset_index()
+            count_column = self.get_count_column(geo_df)
+            # Create aggregation dict dynamically
+            agg_dict = {count_column: 'count'}
+            if 'is_fraud' in geo_df.columns:
+                agg_dict['is_fraud'] = 'sum'
+            
+            region_stats = geo_df.groupby('region').agg(agg_dict).reset_index()
+            region_stats = region_stats.rename(columns={count_column: 'transaction_count'})
+            
+            # Add is_fraud column if it doesn't exist
+            if 'is_fraud' not in region_stats.columns:
+                region_stats['is_fraud'] = 0
             
             if 'is_fraud' in geo_df.columns:
-                region_stats['fraud_rate'] = (region_stats['is_fraud'] / region_stats['transaction_id']) * 100
+                region_stats['fraud_rate'] = (region_stats['is_fraud'] / region_stats['transaction_count']) * 100
             else:
                 region_stats['fraud_rate'] = np.random.uniform(1, 8, len(region_stats))
             
@@ -415,13 +514,21 @@ class AdvancedFraudAnalytics:
                 
                 # Distance vs fraud correlation
                 distance_bins = pd.cut(geo_df['distance_from_center'], bins=10)
-                distance_stats = geo_df.groupby(distance_bins).agg({
-                    'transaction_id': 'count',
-                    'is_fraud': 'sum' if 'is_fraud' in geo_df.columns else lambda x: 0
-                }).reset_index()
+                count_column = self.get_count_column(geo_df)
+                # Create aggregation dict dynamically
+                agg_dict = {count_column: 'count'}
+                if 'is_fraud' in geo_df.columns:
+                    agg_dict['is_fraud'] = 'sum'
+                
+                distance_stats = geo_df.groupby(distance_bins).agg(agg_dict).reset_index()
+                distance_stats = distance_stats.rename(columns={count_column: 'transaction_count'})
+                
+                # Add is_fraud column if it doesn't exist
+                if 'is_fraud' not in distance_stats.columns:
+                    distance_stats['is_fraud'] = 0
                 
                 if 'is_fraud' in geo_df.columns:
-                    distance_stats['fraud_rate'] = (distance_stats['is_fraud'] / distance_stats['transaction_id']) * 100
+                    distance_stats['fraud_rate'] = (distance_stats['is_fraud'] / distance_stats['transaction_count']) * 100
                 else:
                     distance_stats['fraud_rate'] = np.random.uniform(1, 6, len(distance_stats))
                 
@@ -438,17 +545,29 @@ class AdvancedFraudAnalytics:
         """Show behavioral fraud analysis"""
         st.subheader("👤 Behavioral Fraud Analysis")
         
+        if df.empty:
+            st.warning("⚠️ No data available for behavioral analysis")
+            return
+        
         # User behavior analysis
         if 'user_id' not in df.columns:
             st.warning("⚠️ User ID data not available for behavioral analysis")
             return
         
         # User transaction patterns
-        user_stats = df.groupby('user_id').agg({
-            'transaction_id': 'count',
-            'amount': ['sum', 'mean', 'std'] if 'amount' in df.columns else 'count',
-            'is_fraud': 'sum' if 'is_fraud' in df.columns else lambda x: 0
-        }).reset_index()
+        count_column = self.get_count_column(df)
+        # Create aggregation dict dynamically
+        agg_dict = {count_column: 'count'}
+        if 'amount' in df.columns:
+            agg_dict['amount'] = ['sum', 'mean', 'std']
+        if 'is_fraud' in df.columns:
+            agg_dict['is_fraud'] = 'sum'
+        
+        user_stats = df.groupby('user_id').agg(agg_dict).reset_index()
+        
+        # Add is_fraud column if it doesn't exist
+        if 'is_fraud' not in user_stats.columns:
+            user_stats['is_fraud'] = 0
         
         # Flatten column names
         user_stats.columns = ['user_id', 'transaction_count', 'total_amount', 'avg_amount', 'amount_std', 'fraud_count'] if 'amount' in df.columns else ['user_id', 'transaction_count', 'fraud_count']
@@ -535,9 +654,10 @@ class AdvancedFraudAnalytics:
         
         with col1:
             if 'device_id' in df.columns:
+                count_column = self.get_count_column(df)
                 device_stats = df.groupby('device_id').agg({
                     'user_id': 'nunique',
-                    'transaction_id': 'count'
+                    count_column: 'count'
                 }).reset_index()
                 device_stats.columns = ['device_id', 'unique_users', 'transaction_count']
                 
@@ -555,9 +675,10 @@ class AdvancedFraudAnalytics:
         
         with col2:
             if 'ip_address' in df.columns:
+                count_column = self.get_count_column(df)
                 ip_stats = df.groupby('ip_address').agg({
                     'user_id': 'nunique',
-                    'transaction_id': 'count'
+                    count_column: 'count'
                 }).reset_index()
                 ip_stats.columns = ['ip_address', 'unique_users', 'transaction_count']
                 
@@ -576,6 +697,10 @@ class AdvancedFraudAnalytics:
     def show_financial_analysis(self, df: pd.DataFrame):
         """Show financial fraud analysis"""
         st.subheader("💰 Financial Fraud Analysis")
+        
+        if df.empty:
+            st.warning("⚠️ No data available for financial analysis")
+            return
         
         if 'amount' not in df.columns:
             st.warning("⚠️ Amount data not available for financial analysis")
@@ -694,10 +819,16 @@ class AdvancedFraudAnalytics:
             st.divider()
             st.write("**Merchant Financial Analysis**")
             
-            merchant_financial = df.groupby('merchant_id').agg({
-                'amount': ['sum', 'mean', 'count'],
-                'is_fraud': 'sum' if 'is_fraud' in df.columns else lambda x: 0
-            }).reset_index()
+            # Create aggregation dict dynamically
+            agg_dict = {'amount': ['sum', 'mean', 'count']}
+            if 'is_fraud' in df.columns:
+                agg_dict['is_fraud'] = 'sum'
+            
+            merchant_financial = df.groupby('merchant_id').agg(agg_dict).reset_index()
+            
+            # Add is_fraud column if it doesn't exist
+            if 'is_fraud' not in merchant_financial.columns:
+                merchant_financial['is_fraud'] = 0
             
             merchant_financial.columns = ['merchant_id', 'total_volume', 'avg_amount', 'transaction_count', 'fraud_count']
             

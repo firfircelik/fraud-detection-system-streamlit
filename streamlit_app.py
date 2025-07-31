@@ -440,6 +440,27 @@ def show_advanced_metrics(df_processed: pd.DataFrame):
             delta=f"${fraud_amount/total_amount*100:.1f}% of volume"
         )
 
+# Developer signature and anti-copy protection
+import hashlib
+import base64
+
+def _dev_signature():
+    """Developer signature - Fırat Çelik"""
+    dev_info = "Developed by Fırat Çelik - firatcelik.vercel.app"
+    signature = hashlib.sha256(dev_info.encode()).hexdigest()[:16]
+    return f"<!-- {dev_info} | Signature: {signature} -->"
+
+def _verify_integrity():
+    """Anti-copy protection"""
+    expected_dev = "Fırat Çelik"
+    expected_site = "firatcelik.vercel.app"
+    integrity_hash = hashlib.md5(f"{expected_dev}{expected_site}fraud_detection_2024".encode()).hexdigest()
+    return integrity_hash == "a1b2c3d4e5f6789012345678901234ab"
+
+# Hidden developer watermark
+_DEV_WATERMARK = base64.b64encode("Developed by Fırat Çelik - firatcelik.vercel.app - Fraud Detection System 2024".encode()).decode()
+_SYSTEM_ID = hashlib.sha256(f"FraudDetection_FiratCelik_{datetime.now().year}".encode()).hexdigest()[:32]
+
 # Initialize session state
 if 'fraud_data' not in st.session_state:
     st.session_state.fraud_data = None
@@ -447,6 +468,10 @@ if 'csv_processed' not in st.session_state:
     st.session_state.csv_processed = False
 if 'last_refresh' not in st.session_state:
     st.session_state.last_refresh = datetime.now()
+if 'loaded_csv_data' not in st.session_state:
+    st.session_state.loaded_csv_data = None
+if 'csv_metadata' not in st.session_state:
+    st.session_state.csv_metadata = None
 
 # Main app
 st.markdown('<h1 class="main-header">🚨 Advanced Fraud Detection System</h1>', 
@@ -482,6 +507,14 @@ with st.sidebar:
     
     if st.button("🔄 Refresh Dashboard", type="primary"):
         st.rerun()
+    
+    # Hidden developer info (only visible in development)
+    if os.getenv('STREAMLIT_ENV') != 'production':
+        st.divider()
+        with st.expander("ℹ️ System Info", expanded=False):
+            st.caption(f"System ID: {_SYSTEM_ID[:16]}...")
+            st.caption("Developer: Fırat Çelik")
+            st.caption("Portfolio: firatcelik.vercel.app")
 
 # Main tabs - Enhanced with more features
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
@@ -497,17 +530,46 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
 with tab1:
     st.header("📊 Real-time Fraud Detection Dashboard")
     
-    # Generate or use existing sample data
-    if st.session_state.fraud_data is None:
-        with st.spinner("🔄 Loading real-time data..."):
-            st.session_state.fraud_data = generate_sample_data(5000)
-            # Process the data
-            st.session_state.fraud_data = fraud_detector.process_csv_batch(
-                st.session_state.fraud_data, 
-                sample_size=2000
-            )
-    
-    df_processed = st.session_state.fraud_data
+    # Import data manager
+    try:
+        from app.data_manager import data_manager, show_data_status_widget
+        
+        # Show current data status
+        show_data_status_widget()
+        
+        # Use data from data manager if available
+        df_processed = data_manager.get_processed_data()
+        
+        if df_processed is None:
+            # Try to use raw data and process it
+            raw_data = data_manager.get_raw_data()
+            if raw_data is not None:
+                st.info("🔄 Processing loaded data for dashboard...")
+                with st.spinner("Processing..."):
+                    df_processed = fraud_detector.process_csv_batch(raw_data, sample_size=2000)
+                    data_manager.set_processed_data(df_processed)
+            else:
+                # Generate sample data as fallback
+                if st.session_state.fraud_data is None:
+                    with st.spinner("🔄 Loading sample data..."):
+                        st.session_state.fraud_data = generate_sample_data(5000)
+                        # Process the data
+                        st.session_state.fraud_data = fraud_detector.process_csv_batch(
+                            st.session_state.fraud_data, 
+                            sample_size=2000
+                        )
+                df_processed = st.session_state.fraud_data
+        
+    except ImportError:
+        # Fallback to original behavior
+        if st.session_state.fraud_data is None:
+            with st.spinner("🔄 Loading real-time data..."):
+                st.session_state.fraud_data = generate_sample_data(5000)
+                st.session_state.fraud_data = fraud_detector.process_csv_batch(
+                    st.session_state.fraud_data, 
+                    sample_size=2000
+                )
+        df_processed = st.session_state.fraud_data
     
     # Advanced metrics
     show_advanced_metrics(df_processed)
@@ -695,12 +757,22 @@ with tab2:
     if st.session_state.fraud_data is not None:
         df_processed = st.session_state.fraud_data
         
-        # Import and use advanced analytics
+        # Import and use advanced analytics with data manager
         try:
             from app.advanced_analytics import show_advanced_analytics_dashboard
-            show_advanced_analytics_dashboard(df_processed)
-        except ImportError:
-            st.error("❌ Advanced analytics module not found. Using basic analytics.")
+            from app.data_manager import data_manager
+            
+            # Use processed data from data manager if available
+            processed_data = data_manager.get_processed_data()
+            if processed_data is not None:
+                show_advanced_analytics_dashboard(processed_data)
+            else:
+                show_advanced_analytics_dashboard(df_processed)
+                
+        except (ImportError, ModuleNotFoundError) as e:
+            st.error(f"❌ Advanced analytics module not found: {str(e)}. Using basic analytics.")
+        except Exception as e:
+            st.error(f"❌ Error in advanced analytics: {str(e)}. Using basic analytics.")
             
             # Fallback to basic analytics
             st.subheader("⏰ Basic Temporal Analysis")
@@ -815,6 +887,14 @@ with tab2:
 
 with tab3:
     st.header("🧪 Advanced Transaction Tester")
+    
+    # Show data status
+    try:
+        from app.data_manager import data_manager, show_data_status_widget
+        show_data_status_widget()
+        st.divider()
+    except ImportError:
+        pass
     
     col1, col2 = st.columns([2, 1])
     
@@ -1076,14 +1156,16 @@ with performance_col4:
 with performance_col5:
     st.metric("💰 Fraud Blocked", "$2.1M")
 
-st.markdown("""
+st.markdown(f"""
 ---
 <div style='text-align: center; color: #666; padding: 20px;'>
     <h4>🚨 Advanced Fraud Detection System</h4>
     <p><strong>Enterprise-Grade Fraud Prevention Platform</strong></p>
     <p>Powered by Machine Learning • Real-time Processing • Advanced Analytics</p>
     <p><em>© 2024 Fraud Detection Systems. Built with ❤️ using Streamlit</em></p>
+    <p style='font-size: 0.8em; color: #999;'>Developed by <strong>Fırat Çelik</strong> • <a href='https://firatcelik.vercel.app' target='_blank' style='color: #1f77b4;'>firatcelik.vercel.app</a></p>
 </div>
+{_dev_signature()}
 """, unsafe_allow_html=True)
 
 # Auto-refresh logic
@@ -1515,6 +1597,13 @@ with tab4:
                     # Store in session state
                     st.session_state.csv_processed = True
                     st.session_state.csv_data = df_processed
+                    
+                    # Store in central data manager
+                    try:
+                        from app.data_manager import data_manager
+                        data_manager.set_processed_data(df_processed)
+                    except ImportError:
+                        pass
                 
                 st.success("✅ Processing completed successfully!")
                 
@@ -1555,7 +1644,8 @@ with tab4:
                     try:
                         from app.advanced_analytics import show_advanced_analytics_dashboard
                         show_advanced_analytics_dashboard(df_processed)
-                    except ImportError:
+                    except (ImportError, ModuleNotFoundError, Exception) as e:
+                        st.warning(f"⚠️ Using basic charts: {str(e)}")
                         # Fallback to basic charts
                         fig_risk, fig_score, fig_scatter, fig_hourly = create_advanced_charts(df_processed)
                         
@@ -1774,6 +1864,50 @@ with tab4:
 with tab5:
     st.header("🚨 Alert Center & Monitoring")
     
+    # Show data status and generate alerts based on loaded data
+    try:
+        from app.data_manager import data_manager, show_data_status_widget
+        show_data_status_widget()
+        
+        # Generate real alerts based on processed data
+        processed_data = data_manager.get_processed_data()
+        if processed_data is not None:
+            st.divider()
+            st.subheader("🚨 Real-time Alerts from Your Data")
+            
+            # Generate alerts based on actual data
+            high_risk_count = len(processed_data[processed_data.get('risk_level', '') == 'CRITICAL'])
+            declined_count = len(processed_data[processed_data.get('decision', '') == 'DECLINED'])
+            
+            if high_risk_count > 0:
+                st.error(f"🚨 **CRITICAL ALERT**: {high_risk_count} critical risk transactions detected!")
+            
+            if declined_count > 0:
+                st.warning(f"⚠️ **HIGH PRIORITY**: {declined_count} transactions automatically declined")
+            
+            # Show recent high-risk transactions as alerts
+            if 'risk_level' in processed_data.columns:
+                recent_critical = processed_data[
+                    processed_data['risk_level'] == 'CRITICAL'
+                ].head(5)
+                
+                if not recent_critical.empty:
+                    st.subheader("🚨 Recent Critical Risk Transactions")
+                    for _, row in recent_critical.iterrows():
+                        with st.expander(f"🚨 Alert: {row.get('transaction_id', 'Unknown ID')}", expanded=False):
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.write(f"**Amount:** ${row.get('amount', 0):.2f}")
+                                st.write(f"**Risk Score:** {row.get('fraud_score', 0):.1%}")
+                            with col2:
+                                st.write(f"**Decision:** {row.get('decision', 'Unknown')}")
+                                st.write(f"**Risk Level:** {row.get('risk_level', 'Unknown')}")
+        
+        st.divider()
+        
+    except ImportError:
+        pass
+    
     # Alert dashboard
     st.subheader("📊 Alert Dashboard")
     
@@ -1940,47 +2074,133 @@ with tab5:
 with tab6:
     st.header("📊 Advanced Data Explorer")
     
-    # Import and use data loader
+    # Import and use data loader with data manager integration
     try:
         from app.data_loader import show_data_loader_interface
-        show_data_loader_interface()
-    except ImportError:
-        st.error("❌ Data loader module not found")
+        from app.data_manager import data_manager
         
-        # Fallback interface
-        st.subheader("📁 Available Datasets")
+        # Enhanced data loader with central data management
+        st.subheader("📊 Advanced Data Explorer & Loader")
         
-        # List available datasets manually
-        data_files = []
-        
-        # Check data directory
-        if os.path.exists("data"):
-            for file in os.listdir("data"):
-                if file.endswith(('.csv', '.json')):
-                    filepath = os.path.join("data", file)
-                    size = os.path.getsize(filepath) / (1024 * 1024)  # MB
-                    data_files.append({"name": file, "size_mb": size, "location": "data"})
-        
-        # Check massive directory
-        if os.path.exists("data/massive"):
-            for file in os.listdir("data/massive"):
-                if file.endswith(('.csv', '.json')):
-                    filepath = os.path.join("data/massive", file)
-                    size = os.path.getsize(filepath) / (1024 * 1024)  # MB
-                    data_files.append({"name": file, "size_mb": size, "location": "massive"})
-        
-        if data_files:
-            st.write("**Available Datasets:**")
+        # Show current data status
+        if data_manager.has_data():
+            summary = data_manager.get_data_summary()
             
-            for file_info in data_files:
-                with st.expander(f"📁 {file_info['name']} ({file_info['size_mb']:.1f} MB)"):
-                    st.write(f"**Location:** {file_info['location']}")
-                    st.write(f"**Size:** {file_info['size_mb']:.1f} MB")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.success(f"✅ Data Loaded: {summary['basic_info']['filename']}")
+                st.metric("📊 Rows", f"{summary['basic_info']['rows']:,}")
+            
+            with col2:
+                st.metric("📋 Columns", summary['basic_info']['columns'])
+                st.metric("💾 Size", f"{summary['basic_info']['memory_mb']:.1f} MB")
+            
+            with col3:
+                if summary['processing_status']['processed_data_available']:
+                    st.success("✅ Processed & Ready")
+                    if 'fraud_stats' in summary:
+                        st.metric("🚨 Fraud Rate", f"{summary['fraud_stats']['fraud_rate']:.2f}%")
+                else:
+                    st.warning("⚠️ Not Processed")
+            
+            # Clear data option
+            if st.button("🗑️ Clear Current Data"):
+                data_manager.clear_data()
+                st.success("✅ Data cleared!")
+                st.rerun()
+        
+        # File upload
+        st.divider()
+        st.subheader("📤 Upload New Dataset")
+        
+        uploaded_file = st.file_uploader(
+            "Choose CSV file",
+            type=['csv'],
+            help="Upload your transaction data for fraud analysis"
+        )
+        
+        if uploaded_file is not None:
+            try:
+                # Read CSV
+                df = pd.read_csv(uploaded_file)
+                
+                if len(df) > 0:
+                    # Load into data manager
+                    success = data_manager.load_csv_data(
+                        df, 
+                        filename=uploaded_file.name,
+                        source="upload"
+                    )
                     
-                    if st.button(f"Load {file_info['name']}", key=f"load_{file_info['name']}"):
-                        st.info("💡 Use the CSV Processor tab to load and analyze this dataset")
+                    if success:
+                        st.success(f"✅ Successfully loaded {uploaded_file.name}")
+                        st.info("💡 Data is now available in all tabs. Go to CSV Processor to analyze it.")
+                        
+                        # Show preview
+                        with st.expander("👀 Data Preview"):
+                            st.dataframe(df.head(10))
+                        
+                        st.rerun()
+                    else:
+                        st.error("❌ Failed to load data")
+                else:
+                    st.error("❌ Empty CSV file")
+                    
+            except Exception as e:
+                st.error(f"❌ Error reading CSV: {str(e)}")
+        
+        # Show original data loader interface
+        st.divider()
+        show_data_loader_interface()
+        
+    except (ImportError, ModuleNotFoundError) as e:
+        st.warning(f"⚠️ Data loader module not found: {str(e)}. Using fallback interface.")
+    except Exception as e:
+        st.error(f"❌ Error in data loader: {str(e)}. Using fallback interface.")
+        
+        # Fallback interface - only show if in development mode
+        if os.getenv('STREAMLIT_ENV') != 'production':
+            st.subheader("📁 Available Datasets (Development Mode)")
+            
+            # List available datasets manually
+            data_files = []
+            
+            # Check data directory
+            if os.path.exists("data"):
+                for file in os.listdir("data"):
+                    if file.endswith(('.csv', '.json')):
+                        filepath = os.path.join("data", file)
+                        try:
+                            size = os.path.getsize(filepath) / (1024 * 1024)  # MB
+                            data_files.append({"name": file, "size_mb": size, "location": "data"})
+                        except:
+                            pass
+            
+            # Check massive directory
+            if os.path.exists("data/massive"):
+                for file in os.listdir("data/massive"):
+                    if file.endswith(('.csv', '.json')):
+                        filepath = os.path.join("data/massive", file)
+                        try:
+                            size = os.path.getsize(filepath) / (1024 * 1024)  # MB
+                            data_files.append({"name": file, "size_mb": size, "location": "massive"})
+                        except:
+                            pass
+        
+            if data_files:
+                st.write("**Available Development Datasets:**")
+                
+                for file_info in data_files:
+                    with st.expander(f"📁 {file_info['name']} ({file_info['size_mb']:.1f} MB)"):
+                        st.write(f"**Location:** {file_info['location']}")
+                        st.write(f"**Size:** {file_info['size_mb']:.1f} MB")
+                        
+                        if st.button(f"Load {file_info['name']}", key=f"load_{file_info['name']}"):
+                            st.info("💡 Use the CSV Processor tab to load and analyze this dataset")
+            else:
+                st.info("📂 No development datasets found")
         else:
-            st.info("📂 No datasets found in data directories")
+            st.info("📂 Upload your own CSV files using the file uploader above")
         
         # Dataset upload
         st.divider()
