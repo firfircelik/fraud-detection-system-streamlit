@@ -8,19 +8,23 @@
 
 > **Real-time fraud detection dashboard built with Streamlit. Upload CSV, detect fraud patterns, visualize risks instantly!**
 
-## 🎯 **Try It Now**
-**➡️ [Live Demo](https://fraud-detection-system-app.streamlit.app) ⬅️**
+## 🎯 **Try the Advanced System Now**
+**➡️ [Full-Featured Dashboard](https://fraud-detection-system-app.streamlit.app) ⬅️**
 
 ![Fraud Detection Dashboard](https://via.placeholder.com/800x400/1f77b4/ffffff?text=Fraud+Detection+Dashboard)
 
-## ✨ **Key Features**
+## ✨ **Advanced Features**
 
-- 🚀 **One-Click Analysis** - Just upload your CSV file
-- 📊 **Real-time Dashboard** - Interactive charts and graphs  
-- 🎯 **Smart Detection** - ML-powered fraud scoring
-- 🌙 **Dark Mode** - Beautiful responsive design
-- 📱 **Mobile Friendly** - Works everywhere
-- 🔒 **Privacy First** - No data stored, client-side processingection System - Streamlit
+- 🚀 **Real-time Processing** - Advanced ML-powered fraud detection
+- 📊 **Professional Dashboard** - Enterprise-grade analytics and monitoring
+- 🎯 **Smart Detection** - Multi-layered fraud scoring algorithms
+- 📈 **Advanced Analytics** - Comprehensive fraud pattern analysis
+- 🏪 **Merchant Analysis** - Risk profiling and merchant intelligence
+- 🚨 **Alert Center** - Real-time monitoring and alert management
+- 📄 **CSV Processor** - Batch processing for large datasets
+- 🧪 **Transaction Tester** - Interactive fraud testing scenarios
+- ⚙️ **System Settings** - Configurable thresholds and parameters
+- 🔒 **Enterprise Security** - Production-ready security features
 
 Advanced fraud detection dashboard built with Streamlit for real-time transaction analysis.
 
