@@ -154,6 +154,22 @@ def main():
     with tab5:
         show_csv_processor()
     
+    # Footer
+    st.divider()
+    st.markdown("""
+    <div style='text-align: center; padding: 2rem; margin-top: 3rem; opacity: 0.8; font-size: 0.9rem; line-height: 1.6; color: #666;'>
+        <div style='margin-bottom: 1rem; font-weight: 600;'>
+            Powered by Machine Learning • Real-time Processing • Advanced Analytics
+        </div>
+        <div style='margin-bottom: 1rem;'>
+            © 2025 Fraud Detection Systems. Built with ❤️ using Streamlit
+        </div>
+        <div>
+            Developed by <strong>Fırat Çelik</strong> • <a href='https://firatcelik.vercel.app' target='_blank' style='color: #1f77b4; text-decoration: none;'>firatcelik.vercel.app</a>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
     # Auto refresh with session state management
     if auto_refresh:
         # Initialize last refresh time
@@ -870,10 +886,19 @@ def show_dashboard():
         pattern_insights = []
         
         # Analyze patterns in the current data
-        if 'timestamp' in csv_data['df_processed'].columns:
+        if 'timestamp' in csv_data['df_processed'].columns or 'processed_at' in csv_data['df_processed'].columns:
             try:
                 df_temp = csv_data['df_processed'].copy()
-                df_temp['timestamp'] = pd.to_datetime(df_temp['timestamp'])
+                # Handle multiple timestamp column names and ISO format
+                timestamp_col = None
+                for col in ['timestamp', 'processed_at', 'transaction_time', 'created_at']:
+                    if col in df_temp.columns:
+                        timestamp_col = col
+                        break
+                
+                if timestamp_col:
+                    df_temp['timestamp'] = pd.to_datetime(df_temp[timestamp_col], errors='coerce')
+                    df_temp = df_temp.dropna(subset=['timestamp'])  # Remove rows with invalid timestamps
                 df_temp['hour'] = df_temp['timestamp'].dt.hour
                 df_temp['day_of_week'] = df_temp['timestamp'].dt.dayofweek
                 

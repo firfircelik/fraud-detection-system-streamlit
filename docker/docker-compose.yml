@@ -10,7 +10,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.streamlit
     ports:
-      - "8501:8501"
+      - "8502:8502"
     environment:
       - STREAMLIT_SERVER_MAX_UPLOAD_SIZE=500
       - FRAUD_API_URL=http://fraud-api:8080/api
@@ -18,7 +18,7 @@ services:
       - ./data:/app/data
       - ./logs:/app/logs
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8502/_stcore/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -78,21 +78,13 @@ services:
       - fraud-network
     restart: unless-stopped
 
-  # Opsiyonel: Backend API (FastAPI)
+  # Mock API service for testing
   fraud-api:
-    build:
-      context: .
-      dockerfile: Dockerfile.api
+    image: nginx:alpine
     ports:
       - "8080:8080"
-    environment:
-      - DATABASE_URL=postgresql://fraud_user:fraud_password@postgres:5432/fraud_detection
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    volumes:
+      - ./mock-api.conf:/etc/nginx/nginx.conf:ro
     networks:
       - fraud-network
     restart: unless-stopped

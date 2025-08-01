@@ -6,22 +6,65 @@ services:
       context: .
       dockerfile: docker/Dockerfile.streamlit
     ports:
-      - "8501:8501"
+      - "8502:8502"
     environment:
       - STREAMLIT_SERVER_MAX_UPLOAD_SIZE=500
       - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+      - FRAUD_API_URL=http://fraud-api:8080/api
+    depends_on:
+      - fraud-api
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8502/_stcore/health"]
       interval: 30s
       timeout: 10s
       retries: 3
     restart: unless-stopped
-    networks:
-      - fraud-network
 
-networks:
-  fraud-network:
-    driver: bridge
+  fraud-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgresql://fraud_user:fraud_password@postgres:5432/fraud_detection
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=fraud_detection
+      - POSTGRES_USER=fraud_user
+      - POSTGRES_PASSWORD=fraud_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

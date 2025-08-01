@@ -10,6 +10,8 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import requests
+import os
 from datetime import datetime, timedelta
 import json
 from typing import Dict, List, Tuple, Optional
@@ -242,15 +244,39 @@ class AdvancedFraudAnalytics:
             return
         
         try:
-            # Convert timestamp
+            # Convert timestamp - handles ISO 8601 format with microseconds
             df = df.copy()  # Work with a copy to avoid modifying original
-            df['timestamp'] = pd.to_datetime(df['timestamp'])
+            
+            # Try to parse the timestamp column (handles various column names)
+            timestamp_col = None
+            for col in ['timestamp', 'processed_at', 'transaction_time', 'created_at']:
+                if col in df.columns:
+                    timestamp_col = col
+                    break
+            
+            if timestamp_col is None:
+                st.error("❌ No timestamp column found. Expected columns: timestamp, processed_at, transaction_time, created_at")
+                return
+                
+            # Parse datetime with timezone handling
+            df['timestamp'] = pd.to_datetime(df[timestamp_col], errors='coerce')
+            
+            # Check for parsing failures
+            if df['timestamp'].isna().any():
+                failed_count = df['timestamp'].isna().sum()
+                st.warning(f"⚠️ {failed_count} timestamp values could not be parsed")
+                df = df.dropna(subset=['timestamp'])
+            
+            # Extract temporal features
             df['hour'] = df['timestamp'].dt.hour
             df['day_of_week'] = df['timestamp'].dt.day_name()
             df['date'] = df['timestamp'].dt.date
             df['month'] = df['timestamp'].dt.month
+            df['day_name'] = df['timestamp'].dt.day_name()
+            
         except Exception as e:
             st.error(f"❌ Error processing timestamp data: {str(e)}")
+            st.info("💡 Ensure your CSV has a timestamp column in ISO 8601 format (e.g., 2024-11-12T20:24:46.222183)")
             return
         
         # Hourly analysis
@@ -1032,3 +1058,43 @@ def show_advanced_analytics_dashboard(df: pd.DataFrame):
     """Main function to show advanced analytics dashboard"""
     analytics = AdvancedFraudAnalytics()
     analytics.comprehensive_fraud_analysis(df)
+
+def show_advanced_analytics_with_csv(csv_data=None):
+    """Show advanced analytics with CSV or API fallback"""
+    analytics = AdvancedFraudAnalytics()
+    
+    st.header("🔍 Advanced Fraud Analytics")
+    
+    if csv_data and csv_data.get('df_processed') is not None:
+        # Use CSV data
+        df = csv_data['df_processed']
+        st.success("✅ Using uploaded CSV data for analysis")
+        
+        # Show comprehensive analysis
+        analytics.comprehensive_fraud_analysis(df)
+        
+    else:
+        # Show instructions for CSV upload
+        st.info("💡 **To see advanced analytics with temporal patterns:**")
+        st.write("1. Go to the **CSV Processor** tab above")
+        st.write("2. Upload the sample CSV file: `sample_transactions.csv`")
+        st.write("3. Or use your own CSV with columns: transaction_id, user_id, amount, merchant_id, category, currency, timestamp, fraud_score")
+        
+        # Show basic metrics as fallback
+        st.divider()
+        st.subheader("📊 Basic System Metrics")
+        
+        # Mock metrics for demonstration
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("📈 Total Transactions", "1,247,893", "+156 today")
+        
+        with col2:
+            st.metric("🚨 Fraud Detected", "3,742", "12 recent", delta_color="inverse")
+        
+        with col3:
+            st.metric("📊 Fraud Rate", "0.30%", "↓ 0.05%", delta_color="normal")
+        
+        with col4:
+            st.metric("⚡ Avg Processing", "45ms", "Real-time")

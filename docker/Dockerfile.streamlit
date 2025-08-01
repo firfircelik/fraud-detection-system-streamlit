@@ -34,15 +34,15 @@ COPY requirements.txt ./
 RUN mkdir -p data/results logs
 
 # Expose Streamlit port
-EXPOSE 8501
+EXPOSE 8502
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8501/_stcore/health || exit 1
+    CMD curl -f http://localhost:8502/_stcore/health || exit 1
 
 # Run Streamlit with optimized settings
 CMD ["streamlit", "run", "app/main.py", \
-     "--server.port", "8501", \
+     "--server.port", "8502", \
      "--server.address", "0.0.0.0", \
      "--server.maxUploadSize", "500", \
      "--server.enableCORS", "false", \
