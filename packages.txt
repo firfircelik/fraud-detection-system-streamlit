@@ -1,0 +1,14 @@
+# System dependencies for Streamlit Cloud deployment
+# Add any required system packages here
+
+# Example packages (uncomment if needed):
+# build-essential
+# python3-dev
+# libpq-dev
+# libxml2-dev
+# libxslt1-dev
+# libffi-dev
+# libssl-dev
+# curl
+# wget
+# git
