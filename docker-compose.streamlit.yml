@@ -1,8 +1,6 @@
 # Streamlit Fraud Detection System - Docker Compose
 # Streamlit odaklı basitleştirilmiş konfigürasyon
 
-version: '3.8'
-
 services:
   # Ana Streamlit Dashboard
   streamlit-dashboard:
@@ -26,19 +24,7 @@ services:
       - fraud-network
     restart: unless-stopped
 
-  # Opsiyonel: Basit CSV Processor
-  csv-processor:
-    build:
-      context: .
-      dockerfile: Dockerfile.streamlit
-    command: streamlit run simple_csv_app.py --server.port 8503 --server.address 0.0.0.0
-    ports:
-      - "8503:8503"
-    volumes:
-      - ./data:/app/data
-    networks:
-      - fraud-network
-    restart: unless-stopped
+
 
   # PostgreSQL (veri saklama için)
   postgres:
@@ -108,7 +94,6 @@ services:
       - ./nginx/ssl:/etc/nginx/ssl:ro
     depends_on:
       - streamlit-dashboard
-      - csv-processor
     networks:
       - fraud-network
     restart: unless-stopped

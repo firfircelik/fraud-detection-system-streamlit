@@ -27,9 +27,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application files
-COPY streamlit_app.py .
+COPY app/ ./app/
 COPY csv_fraud_processor.py .
-COPY simple_csv_app.py .
 
 # Create necessary directories
 RUN mkdir -p data/results logs
@@ -42,7 +41,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8501/_stcore/health || exit 1
 
 # Run Streamlit with optimized settings
-CMD ["streamlit", "run", "streamlit_app.py", \
+CMD ["streamlit", "run", "app/main.py", \
      "--server.port", "8501", \
      "--server.address", "0.0.0.0", \
      "--server.maxUploadSize", "500", \
