@@ -16,12 +16,28 @@ parts/
 sdist/
 var/
 wheels/
+pip-wheel-metadata/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
 
-# Virtual Environments
+# Testing
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Environments
 .env
 .venv
 env/
@@ -30,13 +46,16 @@ ENV/
 env.bak/
 venv.bak/
 streamlit-env/
+fraud-env/
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
+.spyderproject
+.spyproject
+.ropeproject
 
 # OS
 .DS_Store
@@ -48,32 +67,84 @@ ehthumbs.db
 Thumbs.db
 
 # Logs
-*.log
 logs/
-*.out
+*.log
+pip-log.txt
+pip-delete-this-directory.txt
 
-# Data files (large datasets)
-data/massive/
-data/results/
-*.csv
-*.jsonl
+# Database
+*.db
+*.sqlite
+*.sqlite3
+db.sqlite3-journal
 
-# Test files
-test_*.csv
-quick_test.csv
-test_upload.csv
+# Jupyter Notebook
+.ipynb_checkpoints
+profile_default/
+ipython_config.py
 
-# Temporary files
-*.tmp
-*.temp
-temp/
-tmp/
+# Documentation
+docs/_build/
+site/
+
+# Data files (keep samples)
+data/massive/*.csv
+data/massive/*.json
+data/massive/*.jsonl
+data/results/*.csv
+data/results/*.json
+!data/sample_*.csv
+!data/sample_*.json
+!demo_transactions.csv
 
 # Docker
 .dockerignore
-
-# Jupyter
-.ipynb_checkpoints/
+docker-compose.override.yml
 
 # Streamlit
-.streamlit/
+.streamlit/secrets.toml
+
+# ML Models
+models/
+*.pkl
+*.joblib
+*.h5
+*.pt
+*.pth
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+*~
+
+# Security
+.env.local
+.env.production
+secrets/
+*.pem
+*.key
+*.crt
+
+# Cache
+.cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Translations
+*.mo
+*.pot
+
+# Enterprise specific
+config/secrets.yml
+config/production.yml
+k8s/secrets/
+helm-chart/values-prod.yaml

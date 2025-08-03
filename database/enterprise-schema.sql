@@ -210,81 +210,51 @@ CREATE TABLE transactions (
     CONSTRAINT fk_transactions_merchant FOREIGN KEY (merchant_id) REFERENCES merchants(merchant_id)
 ) PARTITION BY RANGE (transaction_timestamp);
 
--- =====================================================
--- OTOMATIK PARTITION YÖNETİMİ
--- =====================================================
+-- Create monthly partitions for transactions (2024-2025)
+CREATE TABLE transactions_2024_01 PARTITION OF transactions
+FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
 
--- Gerekli extension'ları yükle
-CREATE EXTENSION IF NOT EXISTS pg_partman;
-CREATE EXTENSION IF NOT EXISTS pg_cron;
+CREATE TABLE transactions_2024_02 PARTITION OF transactions
+FOR VALUES FROM ('2024-02-01') TO ('2024-03-01');
 
--- Partition yönetimi için schema
-CREATE SCHEMA IF NOT EXISTS partman;
+CREATE TABLE transactions_2024_03 PARTITION OF transactions
+FOR VALUES FROM ('2024-03-01') TO ('2024-04-01');
 
--- Otomatik partition oluşturma fonksiyonu
-CREATE OR REPLACE FUNCTION create_monthly_partitions(
-    parent_table TEXT,
-    start_date DATE DEFAULT CURRENT_DATE,
-    months_ahead INTEGER DEFAULT 6
-)
-RETURNS VOID AS $$
-DECLARE
-    partition_date DATE;
-    partition_name TEXT;
-    next_partition_date DATE;
-    sql_command TEXT;
-BEGIN
-    FOR i IN 0..months_ahead LOOP
-        partition_date := DATE_TRUNC('month', start_date) + (i || ' months')::INTERVAL;
-        next_partition_date := partition_date + INTERVAL '1 month';
-        
-        partition_name := parent_table || '_' || TO_CHAR(partition_date, 'YYYY_MM');
-        
-        IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = partition_name) THEN
-            sql_command := FORMAT(
-                'CREATE TABLE %I PARTITION OF %I FOR VALUES FROM (%L) TO (%L)',
-                partition_name, parent_table, partition_date, next_partition_date
-            );
-            EXECUTE sql_command;
-            RAISE NOTICE 'Created partition: %', partition_name;
-        END IF;
-    END LOOP;
-END;
-$$ LANGUAGE plpgsql;
+CREATE TABLE transactions_2024_04 PARTITION OF transactions
+FOR VALUES FROM ('2024-04-01') TO ('2024-05-01');
 
--- İlk partition'ları oluştur (2024-2025)
-SELECT create_monthly_partitions('transactions', '2024-01-01'::DATE, 15);
+CREATE TABLE transactions_2024_05 PARTITION OF transactions
+FOR VALUES FROM ('2024-05-01') TO ('2024-06-01');
 
--- pg_partman ile otomatik yönetim kur
-SELECT partman.create_parent(
-    p_parent_table => 'public.transactions',
-    p_control => 'transaction_timestamp',
-    p_type => 'range',
-    p_interval => 'monthly',
-    p_premake => 6,
-    p_start_partition => '2024-01-01'
-);
+CREATE TABLE transactions_2024_06 PARTITION OF transactions
+FOR VALUES FROM ('2024-06-01') TO ('2024-07-01');
 
--- Otomatik maintenance scheduler
-SELECT cron.schedule(
-    'partition-maintenance',
-    '0 0 * * *',
-    'SELECT partman.run_maintenance_proc(); SELECT create_monthly_partitions(''transactions'', CURRENT_DATE, 6);'
-);
+CREATE TABLE transactions_2024_07 PARTITION OF transactions
+FOR VALUES FROM ('2024-07-01') TO ('2024-08-01');
 
--- Partition durumu monitoring view
-CREATE OR REPLACE VIEW v_partition_status AS
-SELECT 
-    tablename,
-    CASE 
-        WHEN tablename ~ '_\d{4}_\d{2}$' THEN 
-            TO_DATE(SUBSTRING(tablename FROM '(\d{4}_\d{2})$'), 'YYYY_MM')
-        ELSE NULL
-    END as partition_date,
-    pg_size_pretty(pg_total_relation_size('public.'||tablename)) as size
-FROM pg_tables
-WHERE tablename LIKE 'transactions_%'
-ORDER BY partition_date DESC;
+CREATE TABLE transactions_2024_08 PARTITION OF transactions
+FOR VALUES FROM ('2024-08-01') TO ('2024-09-01');
+
+CREATE TABLE transactions_2024_09 PARTITION OF transactions
+FOR VALUES FROM ('2024-09-01') TO ('2024-10-01');
+
+CREATE TABLE transactions_2024_10 PARTITION OF transactions
+FOR VALUES FROM ('2024-10-01') TO ('2024-11-01');
+
+CREATE TABLE transactions_2024_11 PARTITION OF transactions
+FOR VALUES FROM ('2024-11-01') TO ('2024-12-01');
+
+CREATE TABLE transactions_2024_12 PARTITION OF transactions
+FOR VALUES FROM ('2024-12-01') TO ('2025-01-01');
+
+CREATE TABLE transactions_2025_01 PARTITION OF transactions
+FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
+
+CREATE TABLE transactions_2025_02 PARTITION OF transactions
+FOR VALUES FROM ('2025-02-01') TO ('2025-03-01');
+
+CREATE TABLE transactions_2025_03 PARTITION OF transactions
+FOR VALUES FROM ('2025-03-01') TO ('2025-04-01');
 
 -- =====================================================
 -- ML AND ANALYTICS TABLES

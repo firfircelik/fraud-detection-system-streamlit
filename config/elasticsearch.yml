@@ -1,0 +1,59 @@
+# Elasticsearch Configuration for Fraud Detection System
+# Optimized for search and analytics
+
+# Cluster Configuration
+cluster.name: fraud-detection-cluster
+node.name: fraud-node-1
+node.roles: [ master, data, ingest, ml ]
+
+# Network Configuration
+network.host: 0.0.0.0
+http.port: 9200
+transport.port: 9300
+
+# Discovery Configuration
+discovery.type: single-node
+cluster.initial_master_nodes: ["fraud-node-1"]
+
+# Path Configuration
+path.data: /usr/share/elasticsearch/data
+path.logs: /usr/share/elasticsearch/logs
+
+# Memory Configuration
+bootstrap.memory_lock: true
+
+# Security Configuration (disabled for development)
+xpack.security.enabled: false
+xpack.security.enrollment.enabled: false
+xpack.security.http.ssl.enabled: false
+xpack.security.transport.ssl.enabled: false
+
+# Machine Learning Configuration
+xpack.ml.enabled: true
+xpack.ml.max_machine_memory_percent: 30
+
+# Monitoring Configuration
+xpack.monitoring.enabled: true
+xpack.monitoring.collection.enabled: true
+
+# Index Configuration
+action.auto_create_index: true
+action.destructive_requires_name: true
+
+# Search Configuration
+search.max_buckets: 65536
+search.allow_expensive_queries: true
+
+# Thread Pool Configuration
+thread_pool.search.size: 4
+thread_pool.search.queue_size: 1000
+thread_pool.write.size: 4
+thread_pool.write.queue_size: 1000
+
+# Circuit Breaker Configuration
+indices.breaker.total.limit: 70%
+indices.breaker.fielddata.limit: 40%
+indices.breaker.request.limit: 40%
+
+# Index Template for Fraud Detection
+# This will be applied automatically to fraud-related indices

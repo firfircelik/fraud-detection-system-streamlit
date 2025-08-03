@@ -1,152 +1,152 @@
-# 🚨 Streamlit Fraud Detection System - Makefile
-
-.PHONY: help install clean start dev docker test lint format
+.PHONY: help dev api dashboard docker build test lint format clean install docs deploy
 
 # Default target
 help:
-	@echo "🚨 Streamlit Fraud Detection System - Available Commands"
-	@echo "========================================================"
+	@echo "🚨 Enterprise Fraud Detection System - Available Commands:"
 	@echo ""
-	@echo "📦 Setup & Installation:"
-	@echo "  make install     - Install all dependencies"
-	@echo "  make clean       - Clean up temporary files"
+	@echo "🚀 Quick Start:"
+	@echo "  make install    - Install dependencies"
+	@echo "  make dev        - Start development environment"
+	@echo "  make docker     - Start with Docker Compose"
+	@echo "  make build      - Build Docker images"
 	@echo ""
-	@echo "🚀 Development:"
-	@echo "  make start       - Start Streamlit dashboard"
-	@echo "  make dev         - Start in development mode"
-	@echo "  make quick       - Start quick CSV analyzer"
+	@echo "🔧 Development:"
+	@echo "  make api        - Start FastAPI backend only"
+	@echo "  make dashboard  - Start Streamlit dashboard only"
+	@echo "  make test       - Run comprehensive test suite"
+	@echo "  make lint       - Run code linting"
+	@echo "  make format     - Format code with Black"
 	@echo ""
-	@echo "🐳 Docker:"
-	@echo "  make docker      - Start with Docker Compose"
-	@echo "  make docker-down - Stop Docker containers"
+	@echo "📚 Documentation:"
+	@echo "  make docs       - Generate documentation"
 	@echo ""
-	@echo "🧪 Testing & Quality:"
-	@echo "  make test        - Run tests"
-	@echo "  make lint        - Run linting"
-	@echo "  make format      - Format code"
-	@echo ""
+	@echo "🚀 Deployment:"
+	@echo "  make deploy     - Deploy to production"
+	@echo "  make clean      - Clean build artifacts"
 
-# Installation
+# Install dependencies
 install:
-	@echo "📦 Installing Streamlit Fraud Detection System..."
-	python3 -m venv streamlit-env
-	./streamlit-env/bin/pip install --upgrade pip
-	./streamlit-env/bin/pip install -r requirements.txt
-	@echo "✅ Installation complete!"
+	@echo "📦 Installing dependencies..."
+	pip install -r requirements.txt
+	@echo "✅ Dependencies installed"
 
-# Clean up
-clean:
-	@echo "🧹 Cleaning up..."
-	rm -rf __pycache__/
-	rm -rf .pytest_cache/
-	rm -rf *.pyc
-	rm -rf .DS_Store
-	rm -rf logs/*.log
-	find . -name "*.pyc" -delete
-	@echo "✅ Cleanup complete!"
-
-# Start main dashboard
-start:
-	@echo "🚀 Starting Streamlit Dashboard..."
-	./scripts/start.sh
-
-# Development mode
+# Development environment
 dev:
-	@echo "🔧 Starting in development mode..."
-	source streamlit-env/bin/activate && \
-	streamlit run app/main.py --server.port 8502 --server.runOnSave true
+	@echo "🚀 Starting development environment..."
+	@echo "Starting PostgreSQL and Redis..."
+	docker-compose up -d postgres redis
+	@echo "Starting API backend..."
+	python src/api/main.py &
+	@echo "Starting dashboard..."
+	streamlit run src/dashboard/streamlit_app.py --server.port 8502
+	@echo "✅ Development environment ready:"
+	@echo "   Dashboard: http://localhost:8502"
+	@echo "   API: http://localhost:8080"
 
-# Quick CSV analyzer
-quick:
-	@echo "⚡ Starting Quick CSV Analyzer..."
-	source streamlit-env/bin/activate && \
-	streamlit run app/quick_analyzer.py --server.port 8503
+# Start API only
+api:
+	@echo "🔌 Starting FastAPI backend..."
+	python src/api/main.py
 
-# Setup helper
-setup:
-	@echo "🔧 Starting Setup Helper..."
-	source streamlit-env/bin/activate && \
-	streamlit run app/setup_helper.py --server.port 8504
+# Start dashboard only
+dashboard:
+	@echo "📊 Starting Streamlit dashboard..."
+	streamlit run src/dashboard/streamlit_app.py --server.port 8502
 
-# Docker commands
+# Docker deployment
 docker:
-	@echo "🐳 Starting with Docker Compose..."
-	docker-compose -f docker/docker-compose.yml up -d
+	@echo "🐳 Starting Docker deployment..."
+	docker-compose up -d
+	@echo "✅ Services started:"
+	@echo "   Dashboard: http://localhost:8502"
+	@echo "   API: http://localhost:8080"
+	@echo "   Database: localhost:5433"
+	@echo "   Redis: localhost:6380"
 
-docker-down:
-	@echo "🐳 Stopping Docker containers..."
-	docker-compose -f docker/docker-compose.yml down
+# Build Docker images
+build:
+	@echo "🔨 Building Docker images..."
+	docker-compose build
+	@echo "✅ Docker images built"
 
-docker-build:
-	@echo "🐳 Building Docker images..."
-	docker-compose -f docker/docker-compose.yml build
-
-# Testing
+# Run comprehensive tests
 test:
-	@echo "🧪 Running tests..."
-	source streamlit-env/bin/activate && \
-	python -m pytest tests/ -v
+	@echo "🧪 Running comprehensive test suite..."
+	pytest tests/ -v --cov=src --cov-report=html
+	@echo "✅ Tests completed. Coverage report: htmlcov/index.html"
 
-# Linting
+# Code linting
 lint:
-	@echo "🔍 Running linting..."
-	source streamlit-env/bin/activate && \
-	flake8 *.py --max-line-length=100 --ignore=E501,W503
+	@echo "🔍 Running code linting..."
+	flake8 src/ --max-line-length=100 --exclude=__pycache__
+	@echo "✅ Linting completed"
 
 # Code formatting
 format:
-	@echo "✨ Formatting code..."
-	source streamlit-env/bin/activate && \
-	black *.py --line-length=100
+	@echo "🎨 Formatting code with Black..."
+	black src/ --line-length 100
+	@echo "✅ Code formatted"
 
-# Create sample data
-sample-data:
-	@echo "📊 Creating sample data..."
-	mkdir -p data
-	source streamlit-env/bin/activate && \
-	python scripts/generate_data.py
+# Generate documentation
+docs:
+	@echo "📚 Generating documentation..."
+	@echo "Documentation available in docs/ directory"
 
-# Check system
-check:
-	@echo "🔍 Checking system requirements..."
-	@python3 --version
-	@pip3 --version
-	@echo "Checking required files..."
-	@ls -la app/main.py app/fraud_processor.py requirements.txt
+# Production deployment
+deploy:
+	@echo "🚀 Deploying to production..."
+	@echo "Building production images..."
+	docker-compose build
+	@echo "✅ Production deployment ready"
 
-# Install pre-commit hooks
-hooks:
-	@echo "🪝 Installing pre-commit hooks..."
-	source streamlit-env/bin/activate && \
-	pip install pre-commit && \
-	pre-commit install
+# Database partition management
+partition-status:
+	@echo "📊 Checking partition status..."
+	docker-compose exec postgres psql -U fraud_user -d fraud_detection -c "SELECT * FROM v_partition_status ORDER BY partition_date DESC LIMIT 10;"
+	@echo "✅ Partition status check completed"
 
-# Update dependencies
-update:
-	@echo "📦 Updating dependencies..."
-	source streamlit-env/bin/activate && \
-	pip install --upgrade -r requirements.txt
+# Create future partitions manually
+partition-create:
+	@echo "🔧 Creating future partitions..."
+	docker-compose exec postgres psql -U fraud_user -d fraud_detection -c "SELECT create_monthly_partitions('transactions', CURRENT_DATE, 6);"
+	@echo "✅ Future partitions created"
 
-# Create deployment package
-package:
-	@echo "📦 Creating deployment package..."
-	mkdir -p dist
-	tar -czf dist/streamlit-fraud-detection-$(shell date +%Y%m%d).tar.gz \
-		app/ scripts/ docker/ requirements.txt Makefile \
-		data/ --exclude=data/massive/ --exclude=streamlit-env/
+# Partition health check
+partition-health:
+	@echo "🏥 Running partition health check..."
+	docker-compose exec postgres psql -U fraud_user -d fraud_detection -c "SELECT * FROM partition_health_check();"
+	@echo "✅ Partition health check completed"
 
-# Show logs
+# Database migration
+migrate:
+	@echo "🔄 Running database migration..."
+	python scripts/migrate_database.py
+	@echo "✅ Database migration completed"
+
+# Clean build artifacts
+clean:
+	@echo "🧹 Cleaning build artifacts..."
+	find . -type f -name "*.pyc" -delete
+	find . -type d -name "__pycache__" -delete
+	find . -type f -name "*.log" -delete
+	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name "htmlcov" -exec rm -rf {} + 2>/dev/null || true
+	@echo "✅ Cleanup completed"
+
+# System health check
+health:
+	@echo "🏥 System health check..."
+	@echo "Checking services..."
+	docker-compose ps
+
+# View logs
 logs:
-	@echo "📋 Showing recent logs..."
-	tail -f logs/*.log 2>/dev/null || echo "No logs found"
+	@echo "📋 Application logs:"
+	docker-compose logs -f --tail=100
 
-# System info
-info:
-	@echo "💻 System Information:"
-	@echo "====================="
-	@echo "OS: $(shell uname -s)"
-	@echo "Python: $(shell python3 --version 2>/dev/null || echo 'Not found')"
-	@echo "Streamlit: $(shell source streamlit-env/bin/activate && streamlit version 2>/dev/null || echo 'Not installed')"
-	@echo "Docker: $(shell docker --version 2>/dev/null || echo 'Not found')"
-	@echo "Current directory: $(PWD)"
-	@echo "Virtual env: $(shell [ -d streamlit-env ] && echo '✅ Exists' || echo '❌ Not found')"
+# Stop all services
+stop:
+	@echo "🛑 Stopping all services..."
+	docker-compose down
+	@echo "✅ All services stopped"

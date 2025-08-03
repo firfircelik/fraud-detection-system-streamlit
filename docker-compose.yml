@@ -1,70 +1,201 @@
-version: '3.8'
-
 services:
-  streamlit-app:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.streamlit
-    ports:
-      - "8502:8502"
+  # Enterprise PostgreSQL Database
+  database:
+    image: postgres:15-alpine
+    container_name: enterprise_fraud_db
     environment:
-      - STREAMLIT_SERVER_MAX_UPLOAD_SIZE=500
-      - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
-      - FRAUD_API_URL=http://fraud-api:8080/api
-    depends_on:
-      - fraud-api
+      POSTGRES_DB: enterprise_fraud_detection
+      POSTGRES_USER: fraud_admin
+      POSTGRES_PASSWORD: FraudDetection2025!
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+      
+      # Performance tuning for large datasets
+      POSTGRES_SHARED_BUFFERS: 256MB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 1GB
+      POSTGRES_MAINTENANCE_WORK_MEM: 64MB
+      POSTGRES_CHECKPOINT_COMPLETION_TARGET: 0.9
+      POSTGRES_WAL_BUFFERS: 16MB
+      POSTGRES_DEFAULT_STATISTICS_TARGET: 100
+      POSTGRES_RANDOM_PAGE_COST: 1.1
+      POSTGRES_EFFECTIVE_IO_CONCURRENCY: 200
+      POSTGRES_WORK_MEM: 4MB
+      POSTGRES_MIN_WAL_SIZE: 1GB
+      POSTGRES_MAX_WAL_SIZE: 4GB
+      
+    ports:
+      - "5432:5432"
     volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
+      - enterprise_fraud_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init-db.sql:ro
+      - ./database/partition_management.sql:/docker-entrypoint-initdb.d/02-partition-management.sql:ro
+      - ./scripts/load-sample-data.sql:/docker-entrypoint-initdb.d/03-sample-data.sql:ro
+      - ./config/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    command: >
+      postgres 
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c work_mem=4MB
+      -c min_wal_size=1GB
+      -c max_wal_size=4GB
+      -c max_connections=200
+      -c log_statement=all
+      -c log_min_duration_statement=1000
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8502/_stcore/health"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD-SHELL", "pg_isready -U fraud_admin -d enterprise_fraud_detection"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - enterprise_network
+
+  # Enterprise Redis Cache
+  cache:
+    image: redis:7-alpine
+    container_name: enterprise_fraud_cache
+    ports:
+      - "6379:6379"
+    volumes:
+      - enterprise_cache_data:/data
+      - ./config/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
       retries: 3
     restart: unless-stopped
+    networks:
+      - enterprise_network
 
-  fraud-api:
+  # Enterprise Fraud Detection API
+  api:
     build:
       context: .
-      dockerfile: Dockerfile.api
+      dockerfile_inline: |
+        FROM python:3.11-slim
+        WORKDIR /app
+        COPY requirements.txt .
+        RUN pip install -r requirements.txt
+        COPY src/ ./src/
+        COPY config/ ./config/
+        EXPOSE 8080
+        CMD ["python", "src/api/main.py"]
+    container_name: enterprise_fraud_api
     ports:
       - "8080:8080"
     environment:
-      - DATABASE_URL=postgresql://fraud_user:fraud_password@postgres:5432/fraud_detection
-      - REDIS_URL=redis://redis:6379
+      DATABASE_URL: postgresql://fraud_admin:FraudDetection2024!@database:5432/enterprise_fraud_detection
+      REDIS_URL: redis://cache:6379
+      API_ENV: production
+      LOG_LEVEL: INFO
+      MAX_CONNECTIONS: 20
+      CONNECTION_TIMEOUT: 30
     depends_on:
-      - postgres
-      - redis
+      database:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    volumes:
+      - ./data:/app/data:ro
+      - ./logs:/app/logs
+      - ./config:/app/config:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - enterprise_network
+
+  # Enterprise Dashboard
+  dashboard:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM python:3.11-slim
+        WORKDIR /app
+        COPY requirements.txt .
+        RUN pip install -r requirements.txt
+        COPY src/ ./src/
+        COPY .streamlit/ ./.streamlit/
+        EXPOSE 8501
+        CMD ["streamlit", "run", "src/dashboard/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    container_name: enterprise_fraud_dashboard
+    ports:
+      - "8501:8501"
+    environment:
+      STREAMLIT_SERVER_MAX_UPLOAD_SIZE: 500
+      STREAMLIT_BROWSER_GATHER_USAGE_STATS: false
+      FRAUD_API_URL: http://api:8080/api
+      STREAMLIT_SERVER_ENABLE_CORS: false
+      STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION: false
+    depends_on:
+      api:
+        condition: service_healthy
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
+      - ./.streamlit:/app/.streamlit:ro
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 60s
     restart: unless-stopped
+    networks:
+      - enterprise_network
 
-  postgres:
-    image: postgres:15-alpine
+  # Enterprise Data Loader Service
+  data-loader:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM python:3.11-slim
+        WORKDIR /app
+        COPY requirements.txt .
+        RUN pip install -r requirements.txt
+        COPY scripts/ ./scripts/
+        COPY config/ ./config/
+        CMD ["python", "scripts/load_massive_data.py"]
+    container_name: enterprise_data_loader
     environment:
-      - POSTGRES_DB=fraud_detection
-      - POSTGRES_USER=fraud_user
-      - POSTGRES_PASSWORD=fraud_password
-    ports:
-      - "5433:5432"
+      DATABASE_URL: postgresql://fraud_admin:FraudDetection2024!@database:5432/enterprise_fraud_detection
+      BATCH_SIZE: 10000
+      LOG_LEVEL: INFO
+    depends_on:
+      database:
+        condition: service_healthy
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6380:6379"
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
+      - ./data:/app/data:ro
+      - ./logs:/app/logs
+    profiles:
+      - data-loading
+    networks:
+      - enterprise_network
 
 volumes:
-  postgres_data:
-  redis_data:
+  enterprise_fraud_data:
+    driver: local
+    name: enterprise_fraud_database
+  enterprise_cache_data:
+    driver: local
+    name: enterprise_fraud_cache
+
+networks:
+  enterprise_network:
+    driver: bridge
+    name: enterprise_fraud_network
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
