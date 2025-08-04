@@ -1,0 +1,32 @@
+# FastAPI Backend Requirements
+fastapi==0.116.1
+uvicorn[standard]==0.35.0
+pydantic==2.10.5
+pydantic-settings==2.7.2
+
+# Database
+sqlalchemy==2.0.42
+psycopg2-binary==2.9.11
+redis==6.2.0
+
+# Machine Learning
+scikit-learn==1.6.1
+xgboost==2.1.5
+pandas==2.2.3
+numpy==2.0.3
+
+# Data Processing
+python-multipart==0.0.20
+python-jose[cryptography]==4.0.0
+passlib[bcrypt]==1.7.4
+
+# Monitoring & Observability
+prometheus-client==0.23.0
+structlog==25.1.0
+
+# Development
+pytest==8.4.1
+pytest-asyncio==0.25.0
+black==25.1.0
+isort==5.13.2
+mypy==1.14.1

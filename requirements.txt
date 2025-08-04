@@ -26,7 +26,9 @@ celery>=5.3.0
 
 # Database
 psycopg2-binary>=2.9.0
+asyncpg>=0.29.0
 sqlalchemy>=2.0.0
+neo4j>=5.13.0
 
 # Additional visualization and analysis
 seaborn>=0.12.0
@@ -41,15 +43,39 @@ statsmodels>=0.14.0
 
 # Geographic analysis
 geopy>=2.3.0
+shapely>=2.0.0
+geohash2>=1.1
 
 # Monitoring and logging
 prometheus-client>=0.17.0
 structlog>=23.1.0
+
+# Web framework and authentication
+fastapi>=0.104.0
+uvicorn>=0.24.0
+pyjwt>=2.8.0
+python-multipart>=0.0.6
+
+# Real-time processing and streaming
+kafka-python>=2.0.2
+kafka-python-ng>=2.2.0
+confluent-kafka>=2.3.0
+
+# Advanced Redis support
+redis[hiredis]>=5.0.0
+
+# Async database support
+asyncpg>=0.29.0
+aioredis>=2.0.1
+
+# System monitoring
+psutil>=5.9.0
 
 # Testing requirements
 pytest>=8.0.0
 pytest-asyncio>=0.21.0
 
 # Development tools
+python-dotenv>=1.0.0
 black>=23.0.0
 flake8>=6.0.0

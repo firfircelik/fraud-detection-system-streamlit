@@ -5,6 +5,64 @@ All notable changes to the Enterprise Fraud Detection System will be documented 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2025-08-03
+
+### 🚀 Advanced Real-time Processing & AI Infrastructure
+
+#### Added
+- **Redis Streams Event Processing**
+  - Real-time fraud event streaming with consumer groups
+  - Stream monitoring and alerting system
+  - Parallel event processing with exactly-once semantics
+  - Event sourcing and replay capabilities
+
+- **Automated Feature Selection Pipeline**
+  - 8 feature selection algorithms (Variance, Correlation, Univariate, RFE, LASSO, Random Forest, Mutual Info, PCA)
+  - Database-backed feature tracking and versioning
+  - Performance metrics and quality monitoring
+  - Automated feature pipeline optimization
+
+- **Enhanced Ensemble Model Infrastructure**
+  - A/B testing framework for model comparison
+  - Dynamic model weighting based on performance
+  - Advanced ensemble techniques (weighted average, voting, stacking)
+  - Statistical significance testing and confidence intervals
+  - Real-time performance tracking and auto-reweighting
+
+- **Apache Flink Stream Processing**
+  - Real-time windowed feature computation
+  - Complex event processing for fraud pattern detection
+  - Tumbling, sliding, and session windows
+  - Watermark handling and late data processing
+  - Distributed stream processing with fault tolerance
+
+- **Exactly-Once Processing Semantics**
+  - Two-phase commit protocol for distributed transactions
+  - Idempotency keys for duplicate request prevention
+  - Write-ahead logging and recovery mechanisms
+  - Coordinated checkpointing across operators
+  - Transactional state management
+
+- **Advanced Monitoring & Metrics**
+  - Real-time processing latency and throughput metrics
+  - Memory usage and CPU utilization tracking
+  - Error rate monitoring and alerting
+  - Performance benchmarking and optimization
+
+#### Enhanced
+- **Stream Processing Infrastructure**
+  - Improved Kafka integration with exactly-once guarantees
+  - Enhanced Redis configuration for high-throughput scenarios
+  - Optimized database connection pooling
+  - Advanced error handling and recovery mechanisms
+
+#### Technical Improvements
+- **Code Quality**
+  - Type hints and comprehensive error handling
+  - Modular architecture with clear separation of concerns
+  - Extensive logging and monitoring capabilities
+  - Performance optimization and resource management
+
 ## [2.0.0] - 2025-08-03
 
 ### 🎉 Major Release - Enterprise Grade System

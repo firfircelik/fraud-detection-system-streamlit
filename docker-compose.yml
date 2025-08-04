@@ -1,34 +1,29 @@
+version: '3.8'
+
 services:
-  # Enterprise PostgreSQL Database
-  database:
+  # =====================================================
+  # CORE DATABASES
+  # =====================================================
+  
+  # PostgreSQL - Primary OLTP Database
+  postgres:
     image: postgres:15-alpine
-    container_name: enterprise_fraud_db
+    container_name: fraud_postgres_primary
     environment:
-      POSTGRES_DB: enterprise_fraud_detection
+      POSTGRES_DB: fraud_detection
       POSTGRES_USER: fraud_admin
-      POSTGRES_PASSWORD: FraudDetection2025!
-      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
-      
-      # Performance tuning for large datasets
+      POSTGRES_PASSWORD: FraudDetection2024!
+      # Performance tuning
       POSTGRES_SHARED_BUFFERS: 256MB
       POSTGRES_EFFECTIVE_CACHE_SIZE: 1GB
-      POSTGRES_MAINTENANCE_WORK_MEM: 64MB
-      POSTGRES_CHECKPOINT_COMPLETION_TARGET: 0.9
-      POSTGRES_WAL_BUFFERS: 16MB
-      POSTGRES_DEFAULT_STATISTICS_TARGET: 100
-      POSTGRES_RANDOM_PAGE_COST: 1.1
-      POSTGRES_EFFECTIVE_IO_CONCURRENCY: 200
       POSTGRES_WORK_MEM: 4MB
-      POSTGRES_MIN_WAL_SIZE: 1GB
-      POSTGRES_MAX_WAL_SIZE: 4GB
-      
+      POSTGRES_MAINTENANCE_WORK_MEM: 64MB
     ports:
       - "5432:5432"
     volumes:
-      - enterprise_fraud_data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init-db.sql:ro
+      - postgres_primary_data:/var/lib/postgresql/data
+      - ./database/enterprise-schema.sql:/docker-entrypoint-initdb.d/01-enterprise-schema.sql:ro
       - ./database/partition_management.sql:/docker-entrypoint-initdb.d/02-partition-management.sql:ro
-      - ./scripts/load-sample-data.sql:/docker-entrypoint-initdb.d/03-sample-data.sql:ro
       - ./config/postgresql.conf:/etc/postgresql/postgresql.conf:ro
     command: >
       postgres 
@@ -39,163 +34,407 @@ services:
       -c wal_buffers=16MB
       -c default_statistics_target=100
       -c random_page_cost=1.1
-      -c effective_io_concurrency=200
-      -c work_mem=4MB
-      -c min_wal_size=1GB
-      -c max_wal_size=4GB
-      -c max_connections=200
-      -c log_statement=all
-      -c log_min_duration_statement=1000
+      -c shared_preload_libraries=pg_stat_statements
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U fraud_admin -d enterprise_fraud_detection"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    restart: unless-stopped
-    networks:
-      - enterprise_network
-
-  # Enterprise Redis Cache
-  cache:
-    image: redis:7-alpine
-    container_name: enterprise_fraud_cache
-    ports:
-      - "6379:6379"
-    volumes:
-      - enterprise_cache_data:/data
-      - ./config/redis.conf:/usr/local/etc/redis/redis.conf:ro
-    command: redis-server /usr/local/etc/redis/redis.conf
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-    restart: unless-stopped
-    networks:
-      - enterprise_network
-
-  # Enterprise Fraud Detection API
-  api:
-    build:
-      context: .
-      dockerfile_inline: |
-        FROM python:3.11-slim
-        WORKDIR /app
-        COPY requirements.txt .
-        RUN pip install -r requirements.txt
-        COPY src/ ./src/
-        COPY config/ ./config/
-        EXPOSE 8080
-        CMD ["python", "src/api/main.py"]
-    container_name: enterprise_fraud_api
-    ports:
-      - "8080:8080"
-    environment:
-      DATABASE_URL: postgresql://fraud_admin:FraudDetection2024!@database:5432/enterprise_fraud_detection
-      REDIS_URL: redis://cache:6379
-      API_ENV: production
-      LOG_LEVEL: INFO
-      MAX_CONNECTIONS: 20
-      CONNECTION_TIMEOUT: 30
-    depends_on:
-      database:
-        condition: service_healthy
-      cache:
-        condition: service_healthy
-    volumes:
-      - ./data:/app/data:ro
-      - ./logs:/app/logs
-      - ./config:/app/config:ro
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
-      interval: 15s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    restart: unless-stopped
-    networks:
-      - enterprise_network
-
-  # Enterprise Dashboard
-  dashboard:
-    build:
-      context: .
-      dockerfile_inline: |
-        FROM python:3.11-slim
-        WORKDIR /app
-        COPY requirements.txt .
-        RUN pip install -r requirements.txt
-        COPY src/ ./src/
-        COPY .streamlit/ ./.streamlit/
-        EXPOSE 8501
-        CMD ["streamlit", "run", "src/dashboard/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
-    container_name: enterprise_fraud_dashboard
-    ports:
-      - "8501:8501"
-    environment:
-      STREAMLIT_SERVER_MAX_UPLOAD_SIZE: 500
-      STREAMLIT_BROWSER_GATHER_USAGE_STATS: false
-      FRAUD_API_URL: http://api:8080/api
-      STREAMLIT_SERVER_ENABLE_CORS: false
-      STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION: false
-    depends_on:
-      api:
-        condition: service_healthy
-    volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
-      - ./.streamlit:/app/.streamlit:ro
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      test: ["CMD-SHELL", "pg_isready -U fraud_admin -d fraud_detection"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
-    restart: unless-stopped
     networks:
-      - enterprise_network
+      - fraud_network
 
-  # Enterprise Data Loader Service
-  data-loader:
+  # Neo4j - Graph Database for Fraud Ring Detection
+  neo4j:
+    image: neo4j:5.15-community
+    container_name: fraud_neo4j
+    environment:
+      NEO4J_AUTH: neo4j/FraudGraph2024!
+      NEO4J_PLUGINS: '["graph-data-science", "apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: gds.*,apoc.*
+      NEO4J_dbms_security_procedures_allowlist: gds.*,apoc.*
+      # Memory settings for graph processing
+      NEO4J_dbms_memory_heap_initial__size: 512m
+      NEO4J_dbms_memory_heap_max__size: 1G
+      NEO4J_dbms_memory_pagecache_size: 512m
+    ports:
+      - "7474:7474"  # HTTP
+      - "7687:7687"  # Bolt
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - neo4j_import:/var/lib/neo4j/import
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "FraudGraph2024!", "RETURN 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - fraud_network
+
+  # TimescaleDB - Time-Series Database for Metrics
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: fraud_timescaledb
+    environment:
+      POSTGRES_DB: fraud_metrics
+      POSTGRES_USER: timescale_admin
+      POSTGRES_PASSWORD: TimeScale2024!
+      # TimescaleDB specific settings
+      TIMESCALEDB_TELEMETRY: off
+    ports:
+      - "5433:5432"
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+      - ./database/timescaledb-init.sql:/docker-entrypoint-initdb.d/01-timescale-init.sql:ro
+    command: >
+      postgres
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c work_mem=4MB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c max_worker_processes=8
+      -c max_parallel_workers_per_gather=4
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U timescale_admin -d fraud_metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - fraud_network
+
+  # Redis - Caching and Real-time Features
+  redis:
+    image: redis/redis-stack:latest
+    container_name: fraud_redis_stack
+    environment:
+      REDIS_ARGS: "--requirepass RedisStack2024! --maxmemory 512mb --maxmemory-policy allkeys-lru"
+    ports:
+      - "6379:6379"  # Redis
+      - "8001:8001"  # RedisInsight
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "RedisStack2024!", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - fraud_network
+
+  # Elasticsearch - Search and Analytics
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: fraud_elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+      - ./config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - fraud_network
+
+  # =====================================================
+  # STREAMING AND PROCESSING
+  # =====================================================
+
+  # Apache Kafka - Message Streaming
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: fraud_kafka
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+      KAFKA_NUM_PARTITIONS: 6
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      # Performance tuning
+      KAFKA_LOG_RETENTION_HOURS: 168  # 7 days
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824  # 1GB
+      KAFKA_LOG_RETENTION_BYTES: 10737418240  # 10GB
+    ports:
+      - "29092:29092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    depends_on:
+      - zookeeper
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - fraud_network
+
+  # Zookeeper for Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: fraud_zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_logs:/var/lib/zookeeper/log
+    networks:
+      - fraud_network
+
+  # Apache Flink - Stream Processing
+  flink-jobmanager:
+    image: flink:1.18-scala_2.12
+    container_name: fraud_flink_jobmanager
+    environment:
+      JOB_MANAGER_RPC_ADDRESS: flink-jobmanager
+    ports:
+      - "8081:8081"
+    command: jobmanager
+    volumes:
+      - flink_data:/opt/flink/data
+    networks:
+      - fraud_network
+
+  flink-taskmanager:
+    image: flink:1.18-scala_2.12
+    container_name: fraud_flink_taskmanager
+    environment:
+      JOB_MANAGER_RPC_ADDRESS: flink-jobmanager
+    depends_on:
+      - flink-jobmanager
+    command: taskmanager
+    volumes:
+      - flink_data:/opt/flink/data
+    networks:
+      - fraud_network
+
+  # =====================================================
+  # MONITORING AND OBSERVABILITY
+  # =====================================================
+
+  # Prometheus - Metrics Collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: fraud_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - fraud_network
+
+  # Grafana - Visualization and Dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: fraud_grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: GrafanaAdmin2024!
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource,redis-datasource
+    ports:
+      - "3002:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./config/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - fraud_network
+
+  # =====================================================
+  # APPLICATION SERVICES
+  # =====================================================
+
+  # Enhanced Fraud Detection API
+  fraud-api:
     build:
       context: .
-      dockerfile_inline: |
-        FROM python:3.11-slim
-        WORKDIR /app
-        COPY requirements.txt .
-        RUN pip install -r requirements.txt
-        COPY scripts/ ./scripts/
-        COPY config/ ./config/
-        CMD ["python", "scripts/load_massive_data.py"]
-    container_name: enterprise_data_loader
+      dockerfile: Dockerfile.api
+    container_name: fraud_api_enhanced
     environment:
-      DATABASE_URL: postgresql://fraud_admin:FraudDetection2024!@database:5432/enterprise_fraud_detection
-      BATCH_SIZE: 10000
+      # Database connections
+      POSTGRES_URL: postgresql://fraud_admin:FraudDetection2024!@postgres:5432/fraud_detection
+      NEO4J_URL: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: FraudGraph2024!
+      TIMESCALEDB_URL: postgresql://timescale_admin:TimeScale2024!@timescaledb:5432/fraud_metrics
+      REDIS_URL: redis://:RedisStack2024!@redis:6379
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      
+      # API configuration
+      API_ENV: production
       LOG_LEVEL: INFO
+      WORKERS: 4
+      MAX_CONNECTIONS: 100
+      CONNECTION_TIMEOUT: 30
+      
+      # ML/AI configuration
+      MODEL_CACHE_SIZE: 1000
+      FEATURE_CACHE_TTL: 3600
+      ENABLE_GPU: false
+      
+      # Security
+      JWT_SECRET: YourJWTSecretKey2024!
+      API_RATE_LIMIT: 1000
+      
+    ports:
+      - "8080:8080"
     depends_on:
-      database:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     volumes:
-      - ./data:/app/data:ro
+      - ./models:/app/models:ro
       - ./logs:/app/logs
-    profiles:
-      - data-loading
     networks:
-      - enterprise_network
+      - fraud_network
 
+  # Enhanced Streamlit Dashboard
+  fraud-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    container_name: fraud_dashboard_enhanced
+    environment:
+      FRAUD_API_URL: http://fraud-api:8080
+      NEO4J_URL: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: FraudGraph2024!
+      REDIS_URL: redis://:RedisStack2024!@redis:6379
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      GRAFANA_URL: http://grafana:3000
+    ports:
+      - "8501:8501"
+    depends_on:
+      - fraud-api
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - fraud_network
+
+  # =====================================================
+  # DATA PROCESSING SERVICES
+  # =====================================================
+
+  # Real-time Feature Engineering Service
+  feature-engine:
+    build:
+      context: .
+      dockerfile: Dockerfile.feature-engine
+    container_name: fraud_feature_engine
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      REDIS_URL: redis://:RedisStack2024!@redis:6379
+      POSTGRES_URL: postgresql://fraud_admin:FraudDetection2024!@postgres:5432/fraud_detection
+      BATCH_SIZE: 1000
+      PROCESSING_INTERVAL: 5
+    depends_on:
+      - kafka
+      - redis
+      - postgres
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - fraud_network
+
+  # ML Model Training Service
+  ml-trainer:
+    build:
+      context: .
+      dockerfile: Dockerfile.ml-trainer
+    container_name: fraud_ml_trainer
+    environment:
+      POSTGRES_URL: postgresql://fraud_admin:FraudDetection2024!@postgres:5432/fraud_detection
+      NEO4J_URL: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: FraudGraph2024!
+      MODEL_STORAGE_PATH: /app/models
+      TRAINING_SCHEDULE: "0 2 * * *"  # Daily at 2 AM
+      ENABLE_GPU: false
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - fraud_network
+
+# =====================================================
+# VOLUMES
+# =====================================================
 volumes:
-  enterprise_fraud_data:
+  postgres_primary_data:
     driver: local
-    name: enterprise_fraud_database
-  enterprise_cache_data:
+  neo4j_data:
     driver: local
-    name: enterprise_fraud_cache
+  neo4j_logs:
+    driver: local
+  neo4j_import:
+    driver: local
+  timescaledb_data:
+    driver: local
+  redis_data:
+    driver: local
+  elasticsearch_data:
+    driver: local
+  kafka_data:
+    driver: local
+  zookeeper_data:
+    driver: local
+  zookeeper_logs:
+    driver: local
+  flink_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
 
+# =====================================================
+# NETWORKS
+# =====================================================
 networks:
-  enterprise_network:
+  fraud_network:
     driver: bridge
-    name: enterprise_fraud_network
     ipam:
       config:
-        - subnet: 172.25.0.0/16
+        - subnet: 172.20.0.0/16

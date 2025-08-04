@@ -1,299 +1,231 @@
 #!/usr/bin/env python3
 """
-🚨 Massive Data Loader for Fraud Detection System
-Loads large CSV files into PostgreSQL database efficiently
+Load MASSIVE real transaction data into PostgreSQL
 """
 
-import os
 import pandas as pd
-import numpy as np
-from sqlalchemy import create_engine, text
-from tqdm import tqdm
+import psycopg2
+from psycopg2.extras import execute_batch
 import logging
-import time
-from datetime import datetime
+from datetime import datetime, timezone
+import numpy as np
+import uuid
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('/app/logs/data_loader.log'),
-        logging.StreamHandler()
-    ]
-)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-class MassiveDataLoader:
-    def __init__(self):
-        self.database_url = os.getenv('DATABASE_URL')
-        self.batch_size = int(os.getenv('BATCH_SIZE', 10000))
-        self.data_dir = '/app/data'
-        
-        if not self.database_url:
-            raise ValueError("DATABASE_URL environment variable is required")
-        
-        self.engine = create_engine(self.database_url, pool_size=20, max_overflow=30)
-        logger.info(f"Initialized data loader with batch size: {self.batch_size}")
+def load_massive_data():
+    """Load the massive transaction data"""
     
-    def load_users_and_merchants(self):
-        """Load users and merchants from CSV data"""
-        logger.info("Loading users and merchants...")
-        
-        try:
-            # Sample CSV to extract unique users and merchants
-            sample_file = os.path.join(self.data_dir, 'massive', '1M_transactions.csv')
-            if not os.path.exists(sample_file):
-                logger.warning(f"Sample file not found: {sample_file}")
-                return
-            
-            # Read sample to get unique values
-            logger.info("Reading sample data to extract users and merchants...")
-            df_sample = pd.read_csv(sample_file, nrows=100000)
-            
-            # Extract unique users
-            unique_users = df_sample['user_id'].unique()
-            logger.info(f"Found {len(unique_users)} unique users")
-            
-            # Create users dataframe
-            users_data = []
-            for user_id in tqdm(unique_users, desc="Processing users"):
-                users_data.append({
-                    'user_id': user_id,
-                    'email': f"{user_id.lower()}@example.com",
-                    'first_name': f"User_{user_id.split('_')[-1]}",
-                    'last_name': "Doe",
-                    'country_code': np.random.choice(['US', 'UK', 'CA', 'DE', 'FR'], p=[0.4, 0.2, 0.15, 0.15, 0.1]),
-                    'risk_profile': np.random.choice(['LOW', 'MEDIUM', 'HIGH'], p=[0.7, 0.25, 0.05])
-                })
-            
-            users_df = pd.DataFrame(users_data)
-            
-            # Insert users in batches
-            with self.engine.connect() as conn:
-                users_df.to_sql('users', conn, if_exists='append', index=False, method='multi')
-            logger.info(f"Inserted {len(users_df)} users")
-            
-            # Extract unique merchants
-            unique_merchants = df_sample['merchant_id'].unique()
-            logger.info(f"Found {len(unique_merchants)} unique merchants")
-            
-            # Create merchants dataframe
-            merchants_data = []
-            categories = ['grocery', 'electronics', 'clothing', 'restaurant', 'gas', 'travel', 'entertainment', 'gambling', 'cryptocurrency']
-            
-            for merchant_id in tqdm(unique_merchants, desc="Processing merchants"):
-                category = np.random.choice(categories)
-                risk_score = 0.9 if category in ['gambling', 'cryptocurrency'] else np.random.uniform(0.1, 0.5)
-                
-                merchants_data.append({
-                    'merchant_id': merchant_id,
-                    'merchant_name': f"Merchant {merchant_id.split('_')[-1]}",
-                    'business_type': 'Online' if np.random.random() > 0.3 else 'Physical',
-                    'category': category,
-                    'country': np.random.choice(['US', 'UK', 'CA']),
-                    'risk_score': round(risk_score, 4)
-                })
-            
-            merchants_df = pd.DataFrame(merchants_data)
-            
-            # Insert merchants in batches
-            with self.engine.connect() as conn:
-                merchants_df.to_sql('merchants', conn, if_exists='append', index=False, method='multi')
-            logger.info(f"Inserted {len(merchants_df)} merchants")
-            
-        except Exception as e:
-            logger.error(f"Error loading users and merchants: {e}")
-            raise
+    # Connect to database (inside container)
+    conn = psycopg2.connect(
+        host='localhost',
+        port=5432,
+        database='fraud_detection',
+        user='fraud_admin',
+        password='FraudDetection2024!'
+    )
     
-    def load_transactions_from_csv(self, csv_file: str, max_rows: int = None):
-        """Load transactions from CSV file efficiently"""
-        logger.info(f"Loading transactions from {csv_file}")
-        
-        if not os.path.exists(csv_file):
-            logger.error(f"CSV file not found: {csv_file}")
-            return
-        
-        try:
-            # Get file size for progress tracking
-            file_size = os.path.getsize(csv_file)
-            logger.info(f"File size: {file_size / (1024*1024):.1f} MB")
-            
-            # Read CSV in chunks
-            chunk_iter = pd.read_csv(csv_file, chunksize=self.batch_size)
-            
-            total_processed = 0
-            start_time = time.time()
-            
-            for chunk_num, chunk in enumerate(chunk_iter):
-                if max_rows and total_processed >= max_rows:
-                    break
-                
-                # Process chunk
-                processed_chunk = self.process_transaction_chunk(chunk)
-                
-                # Insert to database
-                with self.engine.connect() as conn:
-                    processed_chunk.to_sql('transactions', conn, if_exists='append', index=False, method='multi')
-                
-                total_processed += len(processed_chunk)
-                
-                # Progress logging
-                elapsed = time.time() - start_time
-                rate = total_processed / elapsed if elapsed > 0 else 0
-                logger.info(f"Processed {total_processed:,} transactions ({rate:.0f} tx/sec)")
-                
-                # Memory cleanup
-                del chunk, processed_chunk
-            
-            logger.info(f"Successfully loaded {total_processed:,} transactions from {csv_file}")
-            
-        except Exception as e:
-            logger.error(f"Error loading transactions from {csv_file}: {e}")
-            raise
+    logger.info("🚀 Loading MASSIVE transaction data...")
     
-    def process_transaction_chunk(self, chunk: pd.DataFrame) -> pd.DataFrame:
-        """Process a chunk of transactions and add fraud detection results"""
+    # Read CSV file
+    csv_file = '/tmp/5M_transactions.csv'
+    logger.info(f"Reading {csv_file}...")
+    
+    # Read in chunks to handle large file
+    chunk_size = 50000
+    total_rows = 0
+    
+    for chunk_num, chunk in enumerate(pd.read_csv(csv_file, chunksize=chunk_size)):
+        logger.info(f"Processing chunk {chunk_num + 1} with {len(chunk)} rows...")
         
-        # Rename columns to match database schema
-        column_mapping = {
-            'timestamp': 'transaction_timestamp',
-            'lat': 'latitude',
-            'lon': 'longitude'
-        }
-        chunk = chunk.rename(columns=column_mapping)
+        # Prepare data
+        users_data = []
+        merchants_data = []
+        transactions_data = []
         
-        # Add missing columns
-        chunk['transaction_status'] = 'COMPLETED'
-        chunk['country'] = 'US'  # Default country
-        chunk['processed_at'] = datetime.now()
-        chunk['processing_time_ms'] = np.random.randint(50, 200)
-        chunk['model_version'] = 'v1.0'
-        chunk['confidence_score'] = np.random.uniform(0.7, 0.99, len(chunk))
+        # Get unique users and merchants from this chunk
+        unique_users = chunk['user_id'].unique()
+        unique_merchants = chunk['merchant_id'].unique()
         
-        # Calculate fraud scores and risk levels
-        fraud_scores = []
-        risk_levels = []
-        decisions = []
+        # Prepare users
+        for user_id in unique_users:
+            users_data.append((
+                user_id,
+                f"{user_id.lower()}@example.com",
+                f"User_{user_id[-8:]}",
+                f"Last_{user_id[-4:]}",
+                f"+1{np.random.randint(1000000000, 9999999999)}",
+                datetime.now(timezone.utc),
+                'ACTIVE',
+                np.random.uniform(0.0, 1.0),
+                datetime.now(timezone.utc)
+            ))
         
+        # Prepare merchants
+        for merchant_id in unique_merchants:
+            category = chunk[chunk['merchant_id'] == merchant_id]['category'].iloc[0]
+            merchants_data.append((
+                merchant_id,
+                f"Business_{merchant_id}",
+                category.upper(),
+                np.random.choice(['USA', 'CAN', 'GBR', 'DEU', 'FRA']),
+                f"City_{merchant_id[-6:]}",
+                np.random.uniform(0.0, 0.5),
+                np.random.uniform(0.0, 0.1),
+                0,
+                0.0,
+                datetime.now(timezone.utc)
+            ))
+        
+        # Prepare transactions
         for _, row in chunk.iterrows():
-            # Simple fraud scoring logic
-            score = 0.0
+            # Parse timestamp
+            try:
+                timestamp = pd.to_datetime(row['timestamp'])
+            except:
+                timestamp = datetime.now(timezone.utc)
             
-            # Amount-based scoring
-            amount = float(row.get('amount', 0))
-            if amount > 5000:
-                score += 0.4
-            elif amount > 1000:
-                score += 0.2
-            elif amount < 1:
-                score += 0.3
+            # Determine fraud info
+            is_fraud = bool(int(row['is_fraud']))
+            fraud_score = np.random.uniform(0.8, 1.0) if is_fraud else np.random.uniform(0.0, 0.4)
             
-            # Add some randomness for realistic distribution
-            score += np.random.uniform(0, 0.3)
-            score = min(1.0, max(0.0, score))
-            
-            # Determine risk level and decision
-            if score >= 0.8:
+            if fraud_score >= 0.8:
                 risk_level = 'CRITICAL'
                 decision = 'DECLINED'
-            elif score >= 0.6:
+            elif fraud_score >= 0.6:
                 risk_level = 'HIGH'
                 decision = 'REVIEW'
-            elif score >= 0.4:
+            elif fraud_score >= 0.4:
                 risk_level = 'MEDIUM'
-                decision = 'REVIEW'
-            elif score >= 0.2:
-                risk_level = 'LOW'
                 decision = 'APPROVED'
             else:
-                risk_level = 'MINIMAL'
+                risk_level = 'LOW'
                 decision = 'APPROVED'
             
-            fraud_scores.append(round(score, 4))
-            risk_levels.append(risk_level)
-            decisions.append(decision)
+            transactions_data.append((
+                row['transaction_id'],
+                row['user_id'],
+                row['merchant_id'],
+                float(row['amount']),
+                row['currency'],
+                'PURCHASE',
+                np.random.choice(['CREDIT_CARD', 'DEBIT_CARD', 'PAYPAL', 'BANK_TRANSFER']),
+                timestamp,
+                float(row['lat']) if pd.notna(row['lat']) else None,
+                float(row['lon']) if pd.notna(row['lon']) else None,
+                np.random.choice(['USA', 'CAN', 'GBR', 'DEU', 'FRA']),
+                f"City_{np.random.randint(1, 1000)}",
+                row['ip_address'],
+                row['device_id'],
+                np.random.choice(['MOBILE', 'DESKTOP', 'TABLET']),
+                fraud_score,
+                risk_level,
+                is_fraud,
+                decision,
+                np.random.uniform(0.7, 1.0),
+                np.random.randint(10, 500),
+                'v2.0.0',
+                'COMPLETED',
+                datetime.now(timezone.utc)
+            ))
         
-        chunk['fraud_score'] = fraud_scores
-        chunk['risk_level'] = risk_levels
-        chunk['decision'] = decisions
-        
-        # Set is_fraud based on decision
-        chunk['is_fraud'] = chunk['decision'] == 'DECLINED'
-        
-        return chunk
-    
-    def load_all_massive_data(self):
-        """Load all available massive datasets"""
-        massive_dir = os.path.join(self.data_dir, 'massive')
-        
-        if not os.path.exists(massive_dir):
-            logger.warning(f"Massive data directory not found: {massive_dir}")
-            return
-        
-        # Find CSV files
-        csv_files = [f for f in os.listdir(massive_dir) if f.endswith('.csv')]
-        logger.info(f"Found {len(csv_files)} CSV files to process")
-        
-        # Load users and merchants first
-        self.load_users_and_merchants()
-        
-        # Process each CSV file
-        for csv_file in sorted(csv_files):
-            csv_path = os.path.join(massive_dir, csv_file)
-            logger.info(f"Processing {csv_file}...")
+        # Insert data
+        with conn.cursor() as cur:
+            # Insert users (ignore duplicates)
+            if users_data:
+                execute_batch(cur, """
+                    INSERT INTO users (user_id, email, first_name, last_name, phone, 
+                                     registration_date, account_status, risk_score, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (user_id) DO NOTHING
+                """, users_data, page_size=1000)
             
-            # Limit rows for demo (remove in production)
-            max_rows = 50000 if '1M' in csv_file else None
+            # Insert merchants (ignore duplicates)
+            if merchants_data:
+                execute_batch(cur, """
+                    INSERT INTO merchants (merchant_id, merchant_name, category, country, city,
+                                         risk_score, fraud_rate, transaction_count, total_volume, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (merchant_id) DO NOTHING
+                """, merchants_data, page_size=1000)
             
-            try:
-                self.load_transactions_from_csv(csv_path, max_rows)
-            except Exception as e:
-                logger.error(f"Failed to process {csv_file}: {e}")
-                continue
-        
-        # Update statistics
-        self.update_statistics()
+            # Insert transactions
+            if transactions_data:
+                execute_batch(cur, """
+                    INSERT INTO transactions (transaction_id, user_id, merchant_id, amount, currency,
+                                            transaction_type, payment_method, transaction_timestamp,
+                                            latitude, longitude, country, city, ip_address, device_id,
+                                            device_type, fraud_score, risk_level, is_fraud, decision,
+                                            confidence_score, processing_time_ms, model_version, status, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (transaction_id) DO NOTHING
+                """, transactions_data, page_size=1000)
+            
+            conn.commit()
+            total_rows += len(chunk)
+            logger.info(f"✅ Loaded chunk {chunk_num + 1}: {len(transactions_data)} transactions")
     
-    def update_statistics(self):
-        """Update database statistics and create indexes"""
-        logger.info("Updating database statistics...")
+    # Update statistics
+    logger.info("Updating merchant statistics...")
+    with conn.cursor() as cur:
+        cur.execute("""
+            UPDATE merchants SET 
+                transaction_count = (
+                    SELECT COUNT(*) FROM transactions 
+                    WHERE transactions.merchant_id = merchants.merchant_id
+                ),
+                total_volume = (
+                    SELECT COALESCE(SUM(amount), 0) FROM transactions 
+                    WHERE transactions.merchant_id = merchants.merchant_id
+                ),
+                fraud_rate = (
+                    SELECT COALESCE(
+                        COUNT(*) FILTER (WHERE is_fraud = true)::DECIMAL / 
+                        NULLIF(COUNT(*), 0), 0
+                    ) FROM transactions 
+                    WHERE transactions.merchant_id = merchants.merchant_id
+                )
+        """)
         
-        try:
-            with self.engine.connect() as conn:
-                # Update table statistics
-                conn.execute(text("ANALYZE transactions"))
-                conn.execute(text("ANALYZE users"))
-                conn.execute(text("ANALYZE merchants"))
-                
-                # Get final counts
-                tx_count = conn.execute(text("SELECT COUNT(*) FROM transactions")).scalar()
-                fraud_count = conn.execute(text("SELECT COUNT(*) FROM transactions WHERE is_fraud = true")).scalar()
-                user_count = conn.execute(text("SELECT COUNT(*) FROM users")).scalar()
-                merchant_count = conn.execute(text("SELECT COUNT(*) FROM merchants")).scalar()
-                
-                logger.info(f"Final statistics:")
-                logger.info(f"  Transactions: {tx_count:,}")
-                logger.info(f"  Fraud cases: {fraud_count:,}")
-                logger.info(f"  Users: {user_count:,}")
-                logger.info(f"  Merchants: {merchant_count:,}")
-                logger.info(f"  Fraud rate: {(fraud_count/tx_count*100):.2f}%")
-                
-        except Exception as e:
-            logger.error(f"Error updating statistics: {e}")
-
-def main():
-    """Main function"""
-    logger.info("🚨 Starting Massive Data Loader for Fraud Detection System")
+        cur.execute("""
+            UPDATE users SET 
+                risk_score = (
+                    SELECT COALESCE(AVG(fraud_score), 0) FROM transactions 
+                    WHERE transactions.user_id = users.user_id
+                )
+        """)
+        
+        conn.commit()
     
-    try:
-        loader = MassiveDataLoader()
-        loader.load_all_massive_data()
-        logger.info("✅ Data loading completed successfully!")
+    # Final stats
+    with conn.cursor() as cur:
+        cur.execute("SELECT COUNT(*) FROM users")
+        user_count = cur.fetchone()[0]
         
-    except Exception as e:
-        logger.error(f"❌ Data loading failed: {e}")
-        raise
+        cur.execute("SELECT COUNT(*) FROM merchants")
+        merchant_count = cur.fetchone()[0]
+        
+        cur.execute("SELECT COUNT(*) FROM transactions")
+        transaction_count = cur.fetchone()[0]
+        
+        cur.execute("SELECT COUNT(*) FROM transactions WHERE is_fraud = true")
+        fraud_count = cur.fetchone()[0]
+        
+        fraud_rate = (fraud_count / transaction_count * 100) if transaction_count > 0 else 0
+        
+        logger.info(f"""
+        🎉 MASSIVE DATA LOADED SUCCESSFULLY!
+        ====================================
+        👥 Users: {user_count:,}
+        🏪 Merchants: {merchant_count:,}
+        💳 Transactions: {transaction_count:,}
+        🚨 Fraud Cases: {fraud_count:,} ({fraud_rate:.2f}%)
+        ====================================
+        """)
+    
+    conn.close()
+    logger.info("✅ Data loading completed!")
 
 if __name__ == "__main__":
-    main()
+    load_massive_data()

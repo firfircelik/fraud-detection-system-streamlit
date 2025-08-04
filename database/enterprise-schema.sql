@@ -131,11 +131,12 @@ CREATE TABLE merchants (
     -- Constraints
     CONSTRAINT chk_merchant_risk_score CHECK (risk_score >= 0.0000 AND risk_score <= 1.0000),
     CONSTRAINT chk_merchant_fraud_rate CHECK (fraud_rate >= 0.0000 AND fraud_rate <= 1.0000)
-);-- Mai
-n transactions table (partitioned by timestamp)
+);
+
+-- Main transactions table (partitioned by timestamp)
 CREATE TABLE transactions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    transaction_id VARCHAR(100) UNIQUE NOT NULL,
+    id UUID DEFAULT uuid_generate_v4(),
+    transaction_id VARCHAR(100) NOT NULL,
     user_id VARCHAR(100) NOT NULL,
     merchant_id VARCHAR(100) NOT NULL,
     
@@ -201,6 +202,8 @@ CREATE TABLE transactions (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     
     -- Constraints
+    CONSTRAINT pk_transactions PRIMARY KEY (id, transaction_timestamp),
+    CONSTRAINT unq_transaction_id_timestamp UNIQUE (transaction_id, transaction_timestamp),
     CONSTRAINT chk_amount_positive CHECK (amount > 0),
     CONSTRAINT chk_fraud_score CHECK (fraud_score >= 0.0000 AND fraud_score <= 1.0000),
     CONSTRAINT chk_confidence_score CHECK (confidence_score >= 0.0000 AND confidence_score <= 1.0000),
@@ -361,10 +364,11 @@ CREATE TABLE ml_features (
     -- Metadata
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     
-    -- Constraints
-    CONSTRAINT fk_ml_features_transaction FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id)
-);-
-- Model performance tracking with comprehensive metrics
+    -- Constraints (Note: transaction_id has unique constraint with timestamp)
+    -- CONSTRAINT fk_ml_features_transaction FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id)
+);
+
+-- Model performance tracking with comprehensive metrics
 CREATE TABLE ml_model_performance (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     model_name VARCHAR(100) NOT NULL,
