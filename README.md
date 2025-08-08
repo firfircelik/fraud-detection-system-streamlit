@@ -461,6 +461,64 @@ tx_002,user_002,1500.00,merchant_gambling,gambling,2024-01-15T02:15:30Z,EUR
 - 👤 **Behavioral**: User pattern analysis
 - 🌍 **Geographic**: Location-based checks
 
+## 🚀 CI/CD Pipeline
+
+### GitHub Actions Workflows
+
+Our enterprise-grade CI/CD pipeline includes:
+
+#### 🔍 **Continuous Integration** (`.github/workflows/ci.yml`)
+- **Code Quality**: Black, isort, Flake8, MyPy type checking
+- **Security Scanning**: Bandit, Safety, CodeQL analysis
+- **Testing Suite**: Unit, integration, frontend tests with pytest
+- **Docker Security**: Trivy vulnerability scanning
+- **Performance**: Load testing and benchmarking
+
+#### 🚀 **Continuous Deployment** (`.github/workflows/cd.yml`)
+- **Multi-Environment**: Staging and production deployments
+- **Container Registry**: GitHub Container Registry integration
+- **Security**: Image scanning before deployment
+- **Rollback**: Automated rollback on deployment failures
+- **Cleanup**: Automated cleanup of old images
+
+#### 🪝 **Pre-commit Hooks** (`.pre-commit-config.yaml`)
+- **Code Formatting**: Black, isort automatic formatting
+- **Linting**: Flake8, MyPy, Bandit security checks
+- **File Validation**: YAML, JSON, XML syntax checking
+- **Security**: Secret detection, large file prevention
+- **Docker**: Dockerfile linting with Hadolint
+
+### Development Workflow
+
+```bash
+# Install pre-commit hooks
+make install-hooks
+
+# Run hooks manually
+make run-hooks
+
+# Code quality checks
+make lint           # Run all linting
+make format         # Format code
+make type-check     # Type checking
+make security-check # Security analysis
+
+# Testing
+make test           # All tests
+make test-unit      # Unit tests only
+make test-integration # Integration tests
+make test-frontend  # Frontend tests
+make test-security  # Security tests
+make test-performance # Performance tests
+make test-coverage  # Coverage report
+```
+
+### GitHub Templates
+
+- **Bug Reports**: `.github/ISSUE_TEMPLATE/bug_report.md`
+- **Feature Requests**: `.github/ISSUE_TEMPLATE/feature_request.md`
+- **Pull Requests**: `.github/pull_request_template.md`
+
 ## 🛠️ Development Commands
 
 ```bash

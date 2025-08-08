@@ -1,0 +1,252 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME_API: ${{ github.repository }}/fraud-detection-api
+  IMAGE_NAME_STREAMLIT: ${{ github.repository }}/fraud-detection-streamlit
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    outputs:
+      api-image: ${{ steps.meta-api.outputs.tags }}
+      streamlit-image: ${{ steps.meta-streamlit.outputs.tags }}
+      api-digest: ${{ steps.build-api.outputs.digest }}
+      streamlit-digest: ${{ steps.build-streamlit.outputs.digest }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Extract API metadata
+      id: meta-api
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=sha,prefix={{branch}}-
+          
+    - name: Extract Streamlit metadata
+      id: meta-streamlit
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_STREAMLIT }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=sha,prefix={{branch}}-
+          
+    - name: Build and push API image
+      id: build-api
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile.api
+        push: true
+        tags: ${{ steps.meta-api.outputs.tags }}
+        labels: ${{ steps.meta-api.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        
+    - name: Build and push Streamlit image
+      id: build-streamlit
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile.streamlit
+        push: true
+        tags: ${{ steps.meta-streamlit.outputs.tags }}
+        labels: ${{ steps.meta-streamlit.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  security-scan:
+    name: Security Scan Images
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    
+    steps:
+    - name: Run Trivy vulnerability scanner - API
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ needs.build-and-push.outputs.api-image }}
+        format: 'sarif'
+        output: 'api-trivy-results.sarif'
+        
+    - name: Run Trivy vulnerability scanner - Streamlit
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ needs.build-and-push.outputs.streamlit-image }}
+        format: 'sarif'
+        output: 'streamlit-trivy-results.sarif'
+        
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'api-trivy-results.sarif'
+        
+    - name: Upload Streamlit Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'streamlit-trivy-results.sarif'
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-and-push, security-scan]
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+    environment:
+      name: staging
+      url: https://fraud-detection-staging.example.com
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Deploy to Staging
+      run: |
+        echo "Deploying to staging environment..."
+        echo "API Image: ${{ needs.build-and-push.outputs.api-image }}"
+        echo "Streamlit Image: ${{ needs.build-and-push.outputs.streamlit-image }}"
+        
+        # Here you would typically:
+        # 1. Update Kubernetes manifests
+        # 2. Apply to staging cluster
+        # 3. Run smoke tests
+        
+        # Example with kubectl (requires cluster access):
+        # kubectl set image deployment/fraud-detection-api api=${{ needs.build-and-push.outputs.api-image }} -n staging
+        # kubectl set image deployment/fraud-detection-streamlit streamlit=${{ needs.build-and-push.outputs.streamlit-image }} -n staging
+        # kubectl rollout status deployment/fraud-detection-api -n staging
+        # kubectl rollout status deployment/fraud-detection-streamlit -n staging
+        
+    - name: Run Smoke Tests
+      run: |
+        echo "Running smoke tests against staging environment..."
+        # Add your smoke tests here
+        # curl -f https://fraud-detection-staging.example.com/health
+        # curl -f https://fraud-detection-staging.example.com/api/status
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-and-push, security-scan, deploy-staging]
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    environment:
+      name: production
+      url: https://fraud-detection.example.com
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Deploy to Production
+      run: |
+        echo "Deploying to production environment..."
+        echo "API Image: ${{ needs.build-and-push.outputs.api-image }}"
+        echo "Streamlit Image: ${{ needs.build-and-push.outputs.streamlit-image }}"
+        
+        # Production deployment with blue-green or canary strategy
+        # kubectl set image deployment/fraud-detection-api api=${{ needs.build-and-push.outputs.api-image }} -n production
+        # kubectl set image deployment/fraud-detection-streamlit streamlit=${{ needs.build-and-push.outputs.streamlit-image }} -n production
+        # kubectl rollout status deployment/fraud-detection-api -n production
+        # kubectl rollout status deployment/fraud-detection-streamlit -n production
+        
+    - name: Run Production Health Checks
+      run: |
+        echo "Running production health checks..."
+        # Add comprehensive health checks
+        # curl -f https://fraud-detection.example.com/health
+        # curl -f https://fraud-detection.example.com/api/status
+        
+    - name: Notify Deployment Success
+      run: |
+        echo "Production deployment completed successfully!"
+        # Send notifications to Slack, email, etc.
+
+  rollback:
+    name: Rollback Deployment
+    runs-on: ubuntu-latest
+    if: failure() && (needs.deploy-staging.result == 'failure' || needs.deploy-production.result == 'failure')
+    needs: [deploy-staging, deploy-production]
+    
+    steps:
+    - name: Rollback Staging
+      if: needs.deploy-staging.result == 'failure'
+      run: |
+        echo "Rolling back staging deployment..."
+        # kubectl rollout undo deployment/fraud-detection-api -n staging
+        # kubectl rollout undo deployment/fraud-detection-streamlit -n staging
+        
+    - name: Rollback Production
+      if: needs.deploy-production.result == 'failure'
+      run: |
+        echo "Rolling back production deployment..."
+        # kubectl rollout undo deployment/fraud-detection-api -n production
+        # kubectl rollout undo deployment/fraud-detection-streamlit -n production
+        
+    - name: Notify Rollback
+      run: |
+        echo "Deployment rolled back due to failures"
+        # Send failure notifications
+
+  cleanup:
+    name: Cleanup Old Images
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: always()
+    
+    steps:
+    - name: Delete old container images
+      uses: actions/delete-package-versions@v4
+      with:
+        package-name: 'fraud-detection-api'
+        package-type: 'container'
+        min-versions-to-keep: 10
+        delete-only-untagged-versions: true
+        
+    - name: Delete old Streamlit images
+      uses: actions/delete-package-versions@v4
+      with:
+        package-name: 'fraud-detection-streamlit'
+        package-type: 'container'
+        min-versions-to-keep: 10
+        delete-only-untagged-versions: true

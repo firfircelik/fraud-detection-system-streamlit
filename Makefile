@@ -1,28 +1,78 @@
-.PHONY: help dev api dashboard docker build test lint format clean install docs deploy
+# Fraud Detection System - Makefile
+# Development and deployment automation
+
+.PHONY: help install install-dev install-test clean lint format test test-unit test-integration test-frontend test-security test-performance build run run-dev run-prod docker-build docker-run docker-compose-up docker-compose-down deploy health-check logs backup restore
 
 # Default target
 help:
-	@echo "🚨 Enterprise Fraud Detection System - Available Commands:"
+	@echo "Fraud Detection System - Available Commands:"
 	@echo ""
-	@echo "🚀 Quick Start:"
-	@echo "  make install    - Install dependencies"
-	@echo "  make dev        - Start development environment"
-	@echo "  make docker     - Start with Docker Compose"
-	@echo "  make build      - Build Docker images"
+	@echo "Setup & Installation:"
+	@echo "  install          Install production dependencies"
+	@echo "  install-dev      Install development dependencies"
+	@echo "  install-test     Install testing dependencies"
+	@echo "  clean           Clean up temporary files and caches"
 	@echo ""
-	@echo "🔧 Development:"
-	@echo "  make api        - Start FastAPI backend only"
-	@echo "  make frontend   - Start Next.js frontend only"
-	@echo "  make test       - Run comprehensive test suite"
-	@echo "  make lint       - Run code linting"
-	@echo "  make format     - Format code with Black"
+	@echo "Code Quality:"
+	@echo "  lint            Run linting checks"
+	@echo "  format          Format code with black and isort"
+	@echo "  type-check      Run type checking with mypy"
+	@echo "  security-check  Run security analysis"
 	@echo ""
-	@echo "📚 Documentation:"
-	@echo "  make docs       - Generate documentation"
+	@echo "Testing:"
+	@echo "  test            Run all tests"
+	@echo "  test-unit       Run unit tests only"
+	@echo "  test-integration Run integration tests only"
+	@echo "  test-frontend   Run frontend tests only"
+	@echo "  test-security   Run security tests"
+	@echo "  test-performance Run performance tests"
+	@echo "  test-coverage   Generate test coverage report"
 	@echo ""
-	@echo "🚀 Deployment:"
-	@echo "  make deploy     - Deploy to production"
-	@echo "  make clean      - Clean build artifacts"
+	@echo "Development:"
+	@echo "  run             Run the application (development mode)"
+	@echo "  run-api         Run API server only"
+	@echo "  run-frontend    Run Streamlit frontend only"
+	@echo "  run-redis       Start Redis server"
+	@echo ""
+	@echo "Docker:"
+	@echo "  docker-build    Build Docker images"
+	@echo "  docker-run      Run application in Docker"
+	@echo "  docker-compose-up   Start all services with docker-compose"
+	@echo "  docker-compose-down Stop all services"
+	@echo ""
+	@echo "Deployment:"
+	@echo "  deploy          Deploy to production"
+	@echo "  health-check    Check application health"
+	@echo "  logs            View application logs"
+	@echo ""
+	@echo "Maintenance:"
+	@echo "  backup          Backup application data"
+	@echo "  restore         Restore application data"
+	@echo "  update-deps     Update dependencies"
+
+# Variables
+PYTHON := python3
+PIP := pip3
+PYTEST := pytest
+BLACK := black
+ISORT := isort
+FLAKE8 := flake8
+MYPY := mypy
+BANDIT := bandit
+SAFETY := safety
+DOCKER := docker
+DOCKER_COMPOSE := docker-compose
+
+# Directories
+SRC_DIR := .
+BACKEND_DIR := backend
+TESTS_DIR := tests
+DOCS_DIR := docs
+
+# Docker settings
+DOCKER_IMAGE_API := fraud-detection-api
+DOCKER_IMAGE_FRONTEND := fraud-detection-frontend
+DOCKER_TAG := latest
 
 # Install dependencies
 install:

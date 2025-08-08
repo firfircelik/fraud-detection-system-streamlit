@@ -646,7 +646,7 @@ elif page == "🔍 Transaction Analysis":
             merchant_id_clean = merchant_id.strip() if merchant_id else ""
             
             if not user_id_clean and not merchant_id_clean:
-                st.error("❌ User ID or Merchant ID requiered")
+                st.error("❌ User ID veya Merchant ID'den en az biri gerekli!")
             else:
                 # Generate transaction ID
                 transaction_id = str(uuid.uuid4())
