@@ -277,7 +277,7 @@ services:
   fraud-api:
     build:
       context: .
-      dockerfile: Dockerfile.api
+      dockerfile: backend/Dockerfile
     container_name: fraud_api_enhanced
     environment:
       # Database connections
@@ -331,7 +331,7 @@ services:
   fraud-frontend:
     build:
       context: .
-      dockerfile: Dockerfile.streamlit
+      dockerfile: Dockerfile
     container_name: fraud_frontend_streamlit
     environment:
       API_URL: http://fraud-api:8080

@@ -293,7 +293,9 @@ class AuthenticationManager:
     def __init__(self, redis_client: redis.Redis):
         self.redis = redis_client
         self.api_keys: Dict[str, APIKey] = {}
-        self.jwt_secret = os.getenv("JWT_SECRET", "fallback-secret-key-change-in-production")
+        self.jwt_secret = os.getenv(
+            "JWT_SECRET", "fallback-secret-key-change-in-production"
+        )
         self.jwt_algorithm = "HS256"
 
         # Load API keys from storage

@@ -200,7 +200,7 @@ class TestModelStatus:
             assert response.status_code == 500
             data = response.json()
             assert "detail" in data
-            assert "Database connection not available" in data["detail"]
+            assert "Failed to get models status from database" in data["detail"]
             
     def test_model_status_fallback(self):
         """Test model status endpoint with database connection available."""

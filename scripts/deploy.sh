@@ -159,7 +159,7 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: ../Dockerfile.api
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     environment:
@@ -175,7 +175,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: Dockerfile.streamlit
+      dockerfile: Dockerfile
     ports:
       - "80:8501"
     environment:

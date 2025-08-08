@@ -76,8 +76,8 @@ jobs:
       id: build-api
       uses: docker/build-push-action@v5
       with:
-        context: .
-        file: ./Dockerfile.api
+        context: ./backend
+        file: ./backend/Dockerfile
         push: true
         tags: ${{ steps.meta-api.outputs.tags }}
         labels: ${{ steps.meta-api.outputs.labels }}
@@ -89,7 +89,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        file: ./Dockerfile.streamlit
+        file: ./Dockerfile
         push: true
         tags: ${{ steps.meta-streamlit.outputs.tags }}
         labels: ${{ steps.meta-streamlit.outputs.labels }}

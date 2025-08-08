@@ -94,6 +94,20 @@ jobs:
     runs-on: ubuntu-latest
     
     services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: fraud_detection_test
+          POSTGRES_USER: fraud_admin
+          POSTGRES_PASSWORD: FraudDetection2024!
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fraud_admin -d fraud_detection_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+          
       redis:
         image: redis:7-alpine
         ports:
@@ -127,13 +141,52 @@ jobs:
         pip install pytest pytest-cov pytest-asyncio httpx
         pip install -r backend/requirements.txt
         
+    - name: Setup Test Database
+      env:
+        POSTGRES_URL: postgresql://fraud_admin:FraudDetection2024!@localhost:5432/fraud_detection_test
+      run: |
+        # Install PostgreSQL client
+        sudo apt-get update
+        sudo apt-get install -y postgresql-client
+        
+        # Wait for PostgreSQL to be ready
+        until pg_isready -h localhost -p 5432 -U fraud_admin; do
+          echo "Waiting for PostgreSQL..."
+          sleep 2
+        done
+        
+        # Create basic tables for testing
+        PGPASSWORD=FraudDetection2024! psql -h localhost -U fraud_admin -d fraud_detection_test -c "
+        CREATE TABLE IF NOT EXISTS transactions (
+          id SERIAL PRIMARY KEY,
+          transaction_id VARCHAR(255) UNIQUE NOT NULL,
+          user_id VARCHAR(255) NOT NULL,
+          merchant_id VARCHAR(255) NOT NULL,
+          amount DECIMAL(10,2) NOT NULL,
+          currency VARCHAR(10) NOT NULL,
+          transaction_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          fraud_score DECIMAL(5,4) DEFAULT 0.0,
+          is_fraud BOOLEAN DEFAULT FALSE,
+          risk_level VARCHAR(20) DEFAULT 'LOW',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        INSERT INTO transactions (transaction_id, user_id, merchant_id, amount, currency, fraud_score, is_fraud) 
+        VALUES 
+        ('test_001', 'user_001', 'merchant_001', 100.00, 'USD', 0.2, false),
+        ('test_002', 'user_002', 'merchant_002', 500.00, 'USD', 0.8, true),
+        ('test_003', 'user_003', 'merchant_003', 50.00, 'USD', 0.1, false)
+        ON CONFLICT (transaction_id) DO NOTHING;
+        "
+        
     - name: Run Backend Tests
       env:
+        POSTGRES_URL: postgresql://fraud_admin:FraudDetection2024!@localhost:5432/fraud_detection_test
         REDIS_URL: redis://localhost:6379
         TESTING: true
       run: |
         cd backend
-        pytest --cov=. --cov-report=xml --cov-report=html --cov-report=term
+        pytest --cov=. --cov-report=xml --cov-report=html --cov-report=term -v
         
     - name: Upload Coverage Reports
       uses: actions/upload-artifact@v4
@@ -176,9 +229,34 @@ jobs:
         python -m py_compile streamlit_app.py
 
   docker-build:
-    name: Docker Build & Security Scan
+    name: Docker Build & Test
     runs-on: ubuntu-latest
-    needs: [code-quality, backend-tests]
+    needs: [code-quality, dependency-security]
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_USER: testuser
+          POSTGRES_DB: fraud_detection_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+          
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
     
     steps:
     - name: Checkout code
@@ -187,39 +265,79 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
       
-    - name: Build Backend Docker Image
-      run: |
-        docker build -f Dockerfile.api -t fraud-detection-api:${{ github.sha }} .
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
         
-    - name: Build Streamlit Docker Image
+    - name: Build API Docker image
       run: |
-        docker build -f Dockerfile.streamlit -t fraud-detection-streamlit:${{ github.sha }} .
+        docker build -t ghcr.io/${{ github.repository }}/fraud-detection-api:latest \
+          -t ghcr.io/${{ github.repository }}/fraud-detection-api:${{ github.sha }} \
+          -f backend/Dockerfile .
         
-    - name: Run Trivy Security Scan - Backend
+    - name: Build Streamlit Docker image
+      run: |
+        docker build -t ghcr.io/${{ github.repository }}/fraud-detection-streamlit:latest \
+          -t ghcr.io/${{ github.repository }}/fraud-detection-streamlit:${{ github.sha }} \
+          -f Dockerfile .
+          
+    - name: Test API Docker container
+      run: |
+        # Start API container with database connection
+        docker run -d --name api-test \
+          --network host \
+          -e POSTGRES_URL="postgresql://testuser:testpassword@localhost:5432/fraud_detection_test" \
+          -e REDIS_URL="redis://localhost:6379" \
+          -e ENVIRONMENT="test" \
+          -p 8080:8080 \
+          ghcr.io/${{ github.repository }}/fraud-detection-api:latest
+          
+        # Wait for container to start
+        sleep 10
+        
+        # Test API health
+        curl -f http://localhost:8080/health || exit 1
+        
+        # Stop container
+        docker stop api-test
+        docker rm api-test
+        
+    - name: Run Trivy vulnerability scanner on API image
       uses: aquasecurity/trivy-action@master
       with:
-        image-ref: 'fraud-detection-api:${{ github.sha }}'
+        image-ref: 'ghcr.io/${{ github.repository }}/fraud-detection-api:latest'
         format: 'sarif'
-        output: 'backend-trivy-results.sarif'
+        output: 'trivy-api-results.sarif'
         
-    - name: Run Trivy Security Scan - Frontend
+    - name: Run Trivy vulnerability scanner on Streamlit image
       uses: aquasecurity/trivy-action@master
       with:
-        image-ref: 'fraud-detection-streamlit:${{ github.sha }}'
+        image-ref: 'ghcr.io/${{ github.repository }}/fraud-detection-streamlit:latest'
         format: 'sarif'
-        output: 'frontend-trivy-results.sarif'
+        output: 'trivy-streamlit-results.sarif'
         
-    - name: Upload Trivy Scan Results
+    - name: Upload Trivy scan results to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v2
       if: always()
       with:
-        sarif_file: 'backend-trivy-results.sarif'
+        sarif_file: 'trivy-api-results.sarif'
         
-    - name: Upload Frontend Trivy Results
+    - name: Upload Streamlit Trivy scan results to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v2
       if: always()
       with:
-        sarif_file: 'frontend-trivy-results.sarif'
+        sarif_file: 'trivy-streamlit-results.sarif'
+        
+    - name: Push Docker images to registry
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      run: |
+        docker push ghcr.io/${{ github.repository }}/fraud-detection-api:latest
+        docker push ghcr.io/${{ github.repository }}/fraud-detection-api:${{ github.sha }}
+        docker push ghcr.io/${{ github.repository }}/fraud-detection-streamlit:latest
+        docker push ghcr.io/${{ github.repository }}/fraud-detection-streamlit:${{ github.sha }}
 
   integration-tests:
     name: Integration Tests
@@ -227,6 +345,20 @@ jobs:
     needs: [backend-tests, frontend-tests]
     
     services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: fraud_detection_test
+          POSTGRES_USER: fraud_admin
+          POSTGRES_PASSWORD: FraudDetection2024!
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fraud_admin -d fraud_detection_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+          
       redis:
         image: redis:7-alpine
         ports:
@@ -253,13 +385,51 @@ jobs:
         pip install -r streamlit_requirements.txt
         pip install pytest httpx
         
+    - name: Setup Integration Test Database
+      env:
+        POSTGRES_URL: postgresql://fraud_admin:FraudDetection2024!@localhost:5432/fraud_detection_test
+      run: |
+        # Install PostgreSQL client
+        sudo apt-get update
+        sudo apt-get install -y postgresql-client
+        
+        # Wait for PostgreSQL to be ready
+        until pg_isready -h localhost -p 5432 -U fraud_admin; do
+          echo "Waiting for PostgreSQL..."
+          sleep 2
+        done
+        
+        # Create test data
+        PGPASSWORD=FraudDetection2024! psql -h localhost -U fraud_admin -d fraud_detection_test -c "
+        CREATE TABLE IF NOT EXISTS transactions (
+          id SERIAL PRIMARY KEY,
+          transaction_id VARCHAR(255) UNIQUE NOT NULL,
+          user_id VARCHAR(255) NOT NULL,
+          merchant_id VARCHAR(255) NOT NULL,
+          amount DECIMAL(10,2) NOT NULL,
+          currency VARCHAR(10) NOT NULL,
+          transaction_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          fraud_score DECIMAL(5,4) DEFAULT 0.0,
+          is_fraud BOOLEAN DEFAULT FALSE,
+          risk_level VARCHAR(20) DEFAULT 'LOW',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        INSERT INTO transactions (transaction_id, user_id, merchant_id, amount, currency, fraud_score, is_fraud) 
+        VALUES 
+        ('integration_001', 'user_001', 'merchant_001', 100.00, 'USD', 0.2, false),
+        ('integration_002', 'user_002', 'merchant_002', 500.00, 'USD', 0.8, true)
+        ON CONFLICT (transaction_id) DO NOTHING;
+        "
+        
     - name: Start Backend Server
       env:
+        POSTGRES_URL: postgresql://fraud_admin:FraudDetection2024!@localhost:5432/fraud_detection_test
         REDIS_URL: redis://localhost:6379
       run: |
         cd backend
         uvicorn api.main:app --host 0.0.0.0 --port 8080 &
-        sleep 10
+        sleep 15
         
     - name: Test API Endpoints
       run: |
@@ -269,6 +439,7 @@ jobs:
     - name: Run Integration Tests
       env:
         API_BASE_URL: http://localhost:8080
+        POSTGRES_URL: postgresql://fraud_admin:FraudDetection2024!@localhost:5432/fraud_detection_test
         REDIS_URL: redis://localhost:6379
       run: |
         pytest tests/integration/ -v || true
@@ -281,32 +452,65 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Run CodeQL Analysis
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install dependencies for CodeQL
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r backend/requirements.txt
+        pip install -r streamlit_requirements.txt
+        
+    - name: Initialize CodeQL
       uses: github/codeql-action/init@v2
       with:
         languages: python
+        config-file: ./.github/codeql/codeql-config.yml
         
-    - name: Autobuild
-      uses: github/codeql-action/autobuild@v2
-      
+    - name: Manual Build (Skip Autobuild)
+      run: |
+        echo "Manual build step - dependencies already installed"
+        python -m py_compile backend/api/main.py
+        python -m py_compile streamlit_app.py
+        
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
+      with:
+        category: "/language:python"
 
   build-summary:
     name: Build Summary
     runs-on: ubuntu-latest
-    needs: [code-quality, dependency-security, backend-tests, frontend-tests, docker-build, integration-tests]
+    needs: [code-quality, dependency-security, backend-tests, frontend-tests, docker-build, integration-tests, security-analysis]
     if: always()
     
     steps:
-    - name: Build Status Summary
+    - name: Summary
       run: |
-        echo "## CI Pipeline Results" >> $GITHUB_STEP_SUMMARY
-        echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
-        echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
-        echo "| Code Quality | ${{ needs.code-quality.result }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| Dependency Security | ${{ needs.dependency-security.result }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| Backend Tests | ${{ needs.backend-tests.result }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| Frontend Tests | ${{ needs.frontend-tests.result }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| Docker Build | ${{ needs.docker-build.result }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| Integration Tests | ${{ needs.integration-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "=== CI Pipeline Summary ==="
+        echo "Code Quality: ${{ needs.code-quality.result }}"
+        echo "Dependency Security: ${{ needs.dependency-security.result }}"
+        echo "Backend Tests: ${{ needs.backend-tests.result }}"
+        echo "Frontend Tests: ${{ needs.frontend-tests.result }}"
+        echo "Docker Build & Test: ${{ needs.docker-build.result }}"
+        echo "Integration Tests: ${{ needs.integration-tests.result }}"
+        echo "Security Analysis: ${{ needs.security-analysis.result }}"
+        echo ""
+        echo "=== Docker Images ==="
+        echo "API Image: ghcr.io/${{ github.repository }}/fraud-detection-api:${{ github.sha }}"
+        echo "Streamlit Image: ghcr.io/${{ github.repository }}/fraud-detection-streamlit:${{ github.sha }}"
+        echo ""
+        echo "=== Database Integration ==="
+        echo "PostgreSQL: Integrated with CI/CD"
+        echo "Redis: Integrated with CI/CD"
+        echo "Docker Compose: Ready for deployment"

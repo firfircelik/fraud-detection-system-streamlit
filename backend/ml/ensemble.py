@@ -19,8 +19,13 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import IsolationForest, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import (accuracy_score, f1_score, precision_score,
-                             recall_score, roc_auc_score)
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
 from sklearn.svm import SVC
 
 warnings.filterwarnings("ignore")
