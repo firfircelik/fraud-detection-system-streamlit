@@ -1,8 +1,8 @@
 import sys
 import os
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
-# Add the backend directory to Python path for proper imports
+# Add backend directory to Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 backend_dir = os.path.dirname(current_dir)
 if backend_dir not in sys.path:
@@ -10,8 +10,10 @@ if backend_dir not in sys.path:
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
 
-# Import your FastAPI app
+# Import the FastAPI app
 try:
     from api.main import app
 except ImportError:
@@ -171,10 +173,40 @@ class TestBatchAnalysis:
 class TestModelStatus:
     """Test ML model status endpoints."""
 
-    def test_model_status(self):
-        """Test model status endpoint."""
+    @patch('api.main.engine')
+    def test_model_status_with_db(self, mock_engine):
+        """Test model status endpoint with database connection."""
+        # Mock database connection and query result
+        mock_conn = MagicMock()
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = ('RandomForest', 150, 0.85, 0.82, 0.88, 0.75)
+        mock_conn.execute.return_value = mock_result
+        mock_conn.__enter__.return_value = mock_conn
+        mock_conn.__exit__.return_value = None
+        mock_engine.connect.return_value = mock_conn
+        
         response = client.get("/api/models/status")
-        assert response.status_code in [200, 404]
+        assert response.status_code == 200
+        data = response.json()
+        assert "models" in data
+        assert "ensemble_performance" in data
+        assert len(data["models"]) > 0
+        
+    def test_model_status_without_db(self):
+        """Test model status endpoint without database connection."""
+        with patch('api.main.engine', None):
+            response = client.get("/api/models/status")
+            # Should return 500 when no database connection
+            assert response.status_code == 500
+            data = response.json()
+            assert "detail" in data
+            assert "Database connection not available" in data["detail"]
+            
+    def test_model_status_fallback(self):
+        """Test model status endpoint with database connection available."""
+        response = client.get("/api/models/status")
+        # Accept both 200 (with DB) and 500 (without DB) as valid responses
+        assert response.status_code in [200, 500]
         if response.status_code == 200:
             data = response.json()
             assert any(
