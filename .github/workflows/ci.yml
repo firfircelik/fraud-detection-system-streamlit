@@ -55,7 +55,7 @@ jobs:
       run: bandit -r backend/ -f json -o bandit-report.json || true
       
     - name: Upload Bandit Report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: bandit-security-report
@@ -83,7 +83,7 @@ jobs:
         safety check
         
     - name: Upload Safety Report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: safety-vulnerability-report
@@ -136,7 +136,7 @@ jobs:
         pytest --cov=. --cov-report=xml --cov-report=html --cov-report=term
         
     - name: Upload Coverage Reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: backend-coverage-report
         path: backend/htmlcov/
