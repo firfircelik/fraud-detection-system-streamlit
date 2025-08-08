@@ -2,31 +2,35 @@
 fastapi==0.116.1
 uvicorn[standard]==0.35.0
 pydantic==2.10.5
-pydantic-settings==2.7.2
+pydantic-settings==2.10.1
 
 # Database
 sqlalchemy==2.0.42
-psycopg2-binary==2.9.11
-redis==6.2.0
+psycopg2-binary==2.9.10
+redis==5.2.1
+neo4j==5.15.0
+elasticsearch==8.11.0
 
 # Machine Learning
-scikit-learn==1.6.1
-xgboost==2.1.5
+scikit-learn==1.5.2
+xgboost==2.1.4
 pandas==2.2.3
-numpy==2.0.3
+numpy==1.26.4
 
 # Data Processing
 python-multipart==0.0.20
-python-jose[cryptography]==4.0.0
+python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
+python-dotenv==1.0.0
+kafka-python==2.0.2
 
 # Monitoring & Observability
-prometheus-client==0.23.0
-structlog==25.1.0
+prometheus-client==0.22.1
+structlog==24.4.0
 
 # Development
 pytest==8.4.1
 pytest-asyncio==0.25.0
-black==25.1.0
+black==24.10.0
 isort==5.13.2
 mypy==1.14.1

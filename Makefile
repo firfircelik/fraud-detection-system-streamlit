@@ -12,7 +12,7 @@ help:
 	@echo ""
 	@echo "🔧 Development:"
 	@echo "  make api        - Start FastAPI backend only"
-	@echo "  make dashboard  - Start Streamlit dashboard only"
+	@echo "  make frontend   - Start Next.js frontend only"
 	@echo "  make test       - Run comprehensive test suite"
 	@echo "  make lint       - Run code linting"
 	@echo "  make format     - Format code with Black"
@@ -34,34 +34,39 @@ install:
 dev:
 	@echo "🚀 Starting development environment..."
 	@echo "Starting PostgreSQL and Redis..."
-	docker-compose up -d postgres redis
+	docker-compose up -d postgres redis neo4j timescaledb elasticsearch
 	@echo "Starting API backend..."
-	python src/api/main.py &
-	@echo "Starting dashboard..."
-	streamlit run src/dashboard/streamlit_app.py --server.port 8502
+	cd backend && python -m uvicorn api.main:app --reload --host 0.0.0.0 --port 8080 &
+	@echo "Starting Next.js frontend..."
+	cd frontend && npm run dev &
 	@echo "✅ Development environment ready:"
-	@echo "   Dashboard: http://localhost:8502"
+	@echo "   Frontend: http://localhost:3000"
 	@echo "   API: http://localhost:8080"
 
 # Start API only
 api:
 	@echo "🔌 Starting FastAPI backend..."
-	python src/api/main.py
+	cd backend && python -m uvicorn api.main:app --reload --host 0.0.0.0 --port 8080
 
-# Start dashboard only
-dashboard:
-	@echo "📊 Starting Streamlit dashboard..."
-	streamlit run src/dashboard/streamlit_app.py --server.port 8502
+# Start frontend only
+frontend:
+	@echo "📊 Starting Next.js frontend..."
+	cd frontend && npm run dev
 
 # Docker deployment
 docker:
 	@echo "🐳 Starting Docker deployment..."
 	docker-compose up -d
 	@echo "✅ Services started:"
-	@echo "   Dashboard: http://localhost:8502"
+	@echo "   Frontend: http://localhost:3000"
 	@echo "   API: http://localhost:8080"
-	@echo "   Database: localhost:5433"
-	@echo "   Redis: localhost:6380"
+	@echo "   PostgreSQL: localhost:5434"
+	@echo "   Neo4j: localhost:7474"
+	@echo "   Redis: localhost:6379"
+	@echo "   TimescaleDB: localhost:5433"
+	@echo "   Elasticsearch: localhost:9200"
+	@echo "   Prometheus: http://localhost:9090"
+	@echo "   Grafana: http://localhost:3001"
 
 # Build Docker images
 build:

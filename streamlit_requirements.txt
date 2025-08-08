@@ -1,0 +1,9 @@
+# Streamlit Frontend Requirements
+streamlit>=1.28.0
+requests>=2.31.0
+plotly>=5.17.0
+altair>=5.1.0
+pandas>=2.1.0
+numpy>=1.25.0
+redis>=5.0.0
+psutil>=5.9.0

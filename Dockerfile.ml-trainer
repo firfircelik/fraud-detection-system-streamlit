@@ -11,14 +11,19 @@ RUN apt-get update && apt-get install -y \
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN python -m venv /opt/venv \
+    && . /opt/venv/bin/activate \
+    && pip install --no-cache-dir --break-system-packages -r requirements.txt
 
 # Copy source code
-COPY src/ ./src/
+COPY backend/ ./backend/
 COPY data/ ./data/
 
 # Create directories
 RUN mkdir -p /app/models /app/logs
 
+# Set Python path
+ENV PYTHONPATH=/app:/app/backend
+
 # Run ML trainer
-CMD ["python", "-m", "src.ml.trainer"]
+CMD ["/bin/bash", "-c", ". /opt/venv/bin/activate && python -m backend.ml.trainer"]

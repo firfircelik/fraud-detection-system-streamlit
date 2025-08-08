@@ -23,10 +23,7 @@ fraud-detection-system/
 │   ├── monitoring/            # Metrics & observability
 │   └── requirements.txt       # Python dependencies
 │
-├── frontend/                   # Next.js dashboard (coming soon)
-│   ├── src/                   # React components
-│   ├── pages/                 # Next.js pages
-│   └── package.json           # Node.js dependencies
+├── streamlit_app.py            # Streamlit dashboard
 │
 ├── database/                   # Database schemas & migrations
 ├── docker-compose.yml          # Multi-service orchestration
@@ -95,10 +92,7 @@ fraud-detection-system/
 │   ├── 📂 cache/               # Redis caching layer
 │   ├── 📂 monitoring/          # Metrics & observability
 │   └── 📄 requirements.txt     # Python dependencies
-├── 📂 frontend/                # Next.js dashboard (development)
-│   ├── 📂 src/                 # React components
-│   ├── 📂 pages/               # Next.js pages
-│   └── 📄 package.json         # Node.js dependencies
+├── 📄 streamlit_app.py         # Streamlit dashboard
 ├── 📂 config/                  # Configuration files
 ├── 📂 database/                # Database schemas & migrations
 ├── 📂 scripts/                 # Deployment and utility scripts
@@ -123,7 +117,7 @@ docker-compose up -d
 
 # Access services
 # Backend API: http://localhost:8000
-# Frontend: http://localhost:3000 (coming soon)
+# Streamlit Frontend: http://localhost:8501
 # Database: localhost:5432
 # Redis: localhost:6379
 ```
@@ -145,10 +139,8 @@ docker-compose up -d postgres redis neo4j timescaledb
 # Run FastAPI backend
 uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 
-# Frontend development (coming soon)
-# cd frontend
-# npm install
-# npm run dev
+# Streamlit Frontend development
+# streamlit run streamlit_app.py --server.port 8501
 ```
 
 ### Option 3: Production Deployment
@@ -173,7 +165,7 @@ fraud-detection-system-streamlit/
 │   ├── database/           # Database utilities
 │   ├── cache/              # Redis caching layer
 │   └── requirements.txt    # Backend dependencies
-├── frontend/               # Next.js dashboard (development)
+├── streamlit_app.py        # Streamlit dashboard
 ├── data/                   # Sample data files
 ├── scripts/                # Utility scripts
 ├── database/               # Database schemas
@@ -305,7 +297,7 @@ fraud-detection-system-streamlit/
 | --------------------- | --------------------- | ------------------------------ |
 | **FastAPI Backend**   | http://localhost:8000 | REST API endpoints             |
 | **API Documentation** | http://localhost:8000/docs | Interactive API docs       |
-| **Next.js Frontend** | http://localhost:3000 | Modern dashboard (development) |
+| **Streamlit Frontend** | http://localhost:8501 | Interactive dashboard |
 | **PostgreSQL**        | localhost:5432        | Main database                  |
 | **Redis Cache**       | localhost:6379        | Caching layer                  |
 | **Neo4j Graph**       | localhost:7687        | Graph database                 |
@@ -357,7 +349,7 @@ fraud-detection-system-streamlit/
 ### Core Technologies
 
 - **Backend**: FastAPI 0.116+ 
-- **Frontend**: Next.js 14+ (development)
+- **Frontend**: Streamlit (interactive dashboard)
 - **Database**: PostgreSQL 15+, Neo4j, TimescaleDB
 - **Cache**: Redis 7+
 - **ML Pipeline**: Scikit-learn, XGBoost

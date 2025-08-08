@@ -45,7 +45,6 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-streamlit-env/
 fraud-env/
 
 # IDE
@@ -101,8 +100,8 @@ data/results/*.json
 .dockerignore
 docker-compose.override.yml
 
-# Streamlit
-.streamlit/secrets.toml
+# Application secrets
+.secrets/
 
 # ML Models
 models/
@@ -149,24 +148,8 @@ config/production.yml
 k8s/secrets/
 helm-chart/values-prod.yaml
 
-logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-dev-debug.log
-# Dependency directories
-node_modules/
-# Environment variables
-# Editor directories and files
-.idea
-.vscode
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
 # OS specific
 
 # Task files
 # tasks.json
-# tasks/ 
+# tasks/

@@ -47,14 +47,15 @@ class MassiveDatasetGenerator:
             hour = np.random.choice(range(6, 23), p=np.ones(17)/17)
             # Cluster around major cities
             city_centers = [(40.7128, -74.0060), (51.5074, -0.1278), (35.6762, 139.6503)]
-            center_lat, center_lon = np.random.choice(city_centers)
+            center_idx = np.random.choice(len(city_centers))
+            center_lat, center_lon = city_centers[center_idx]
             lat = center_lat + np.random.normal(0, 2)
             lon = center_lon + np.random.normal(0, 2)
         
         timestamp = datetime.now() - timedelta(
-            days=np.random.randint(0, 730),
-            hours=hour,
-            minutes=np.random.randint(0, 60)
+            days=int(np.random.randint(0, 730)),
+            hours=int(hour),
+            minutes=int(np.random.randint(0, 60))
         )
         
         # IP address generation

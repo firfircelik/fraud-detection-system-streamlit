@@ -5,11 +5,11 @@ Thank you for your interest in contributing! 🎉
 ## 🚀 Quick Start
 
 1. **Fork** the repository
-2. **Clone** your fork: `git clone https://github.com/YOUR_USERNAME/fraud-detection-system-streamlit.git`
+2. **Clone** your fork: `git clone https://github.com/YOUR_USERNAME/fraud-detection-system.git`
 3. **Create** a branch: `git checkout -b feature/amazing-feature`
-4. **Install** dependencies: `pip install -r requirements.txt`
+4. **Install** dependencies: `pip install -r backend/requirements.txt`
 5. **Make** your changes
-6. **Test** locally: `streamlit run app/main.py`
+6. **Test** locally: `uvicorn api.main:app --reload` (backend) and `streamlit run streamlit_app.py` (frontend)
 7. **Commit** changes: `git commit -m 'Add amazing feature'`
 8. **Push** to branch: `git push origin feature/amazing-feature`
 9. **Create** Pull Request
@@ -36,18 +36,22 @@ Thank you for your interest in contributing! 🎉
 
 ```bash
 # 1. Clone and setup
-git clone https://github.com/firfircelik/fraud-detection-system-streamlit.git
-cd fraud-detection-system-streamlit
+git clone https://github.com/firfircelik/fraud-detection-system.git
+cd fraud-detection-system
 
 # 2. Create virtual environment
-python -m venv streamlit-env
-source streamlit-env/bin/activate  # On Windows: streamlit-env\Scripts\activate
+python -m venv fraud-env
+source fraud-env/bin/activate  # On Windows: fraud-env\Scripts\activate
 
-# 3. Install dependencies
+# 3. Install backend dependencies
+cd backend
 pip install -r requirements.txt
 
-# 4. Run app
-streamlit run app/main.py
+# 4. Run backend
+uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
+
+# 5. Run Streamlit frontend (in new terminal)
+streamlit run streamlit_app.py --server.port 8501
 ```
 
 ## 🎯 Areas for Contribution
@@ -71,14 +75,19 @@ streamlit run app/main.py
 
 Before submitting:
 ```bash
-# Test the main app
-streamlit run app/main.py
+# Test the backend API
+cd backend
+uvicorn api.main:app --reload
 
 # Check for Python errors
-python -m py_compile app/*.py
+python -m py_compile api/*.py
 
-# Test with sample data
-# Upload a CSV file and verify it processes correctly
+# Test the Streamlit frontend
+streamlit run streamlit_app.py --server.port 8501
+
+# Test API endpoints
+# Visit http://localhost:8000/docs for API documentation
+# Test frontend at http://localhost:8501
 ```
 
 ## 🏆 Recognition

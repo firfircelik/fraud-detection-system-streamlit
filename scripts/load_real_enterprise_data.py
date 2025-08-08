@@ -41,7 +41,7 @@ def create_enterprise_tables(conn):
         
         cur.execute("""
             DO $$ BEGIN
-                CREATE TYPE transaction_status AS ENUM ('PENDING', 'APPROVED', 'DECLINED', 'REVIEW', 'BLOCKED', 'COMPLETED');
+                CREATE TYPE transaction_status AS ENUM ('PENDING', 'APPROVED', 'DECLINED', 'REVIEW', 'BLOCKED');
             EXCEPTION
                 WHEN duplicate_object THEN null;
             END $$;
@@ -82,7 +82,7 @@ def create_enterprise_tables(conn):
             CREATE TABLE IF NOT EXISTS merchants (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 merchant_id VARCHAR(100) UNIQUE NOT NULL,
-                merchant_name VARCHAR(255) NOT NULL,
+                business_name VARCHAR(255) NOT NULL,
                 business_type VARCHAR(100),
                 category VARCHAR(100),
                 subcategory VARCHAR(100),
@@ -220,7 +220,7 @@ def load_massive_csv_data(conn, csv_file):
     logger.info(f"🚀 Loading MASSIVE data from {csv_file}...")
     
     # Read CSV in chunks
-    chunk_size = 50000
+    chunk_size = 10000
     total_rows = 0
     
     for chunk_num, chunk in enumerate(pd.read_csv(csv_file, chunksize=chunk_size)):
@@ -265,28 +265,25 @@ def load_massive_csv_data(conn, csv_file):
         for merchant_id in unique_merchants:
             category = chunk[chunk['merchant_id'] == merchant_id]['category'].iloc[0]
             merchants_data.append((
-                str(uuid.uuid4()),
-                merchant_id,
-                f"Business_{merchant_id}",
-                np.random.choice(['RETAIL', 'SERVICE', 'ONLINE', 'RESTAURANT']),
-                category.upper(),
-                f"Sub_{category}",
-                f"{np.random.randint(1000, 9999)}",
-                np.random.choice(['USA', 'CAN', 'GBR', 'DEU', 'FRA']),
-                f"State_{np.random.randint(1, 50)}",
-                f"City_{np.random.randint(1, 1000)}",
-                f"{np.random.randint(10000, 99999)}",
-                np.random.uniform(-90, 90),
-                np.random.uniform(-180, 180),
-                datetime.now().date() - timedelta(days=np.random.randint(365, 3650)),
-                np.random.uniform(0.0, 0.5),
-                np.random.uniform(0.0, 0.1),
-                0, 0.0, 0.0, 0.0,
-                np.random.uniform(0.0, 0.05),
-                bool(np.random.choice([True, False], p=[0.1, 0.9])),
-                'COMPLIANT',
-                datetime.now(timezone.utc),
-                datetime.now(timezone.utc)
+                str(uuid.uuid4()),  # id
+                merchant_id,  # merchant_id
+                f"Business_{merchant_id}",  # business_name
+                np.random.choice(['RETAIL', 'SERVICE', 'ONLINE', 'RESTAURANT']),  # business_type
+                category.upper(),  # category
+                f"{np.random.randint(1000, 9999)}",  # mcc
+                np.random.choice(['USA', 'CAN', 'GBR', 'DEU', 'FRA']),  # country
+                f"State_{np.random.randint(1, 50)}",  # state_province
+                f"City_{np.random.randint(1, 1000)}",  # city
+                f"{np.random.randint(10000, 99999)}",  # postal_code
+                datetime.now().date() - timedelta(days=np.random.randint(365, 3650)),  # registration_date
+                np.random.uniform(0.0, 0.5),  # risk_score
+                np.random.uniform(0.0, 0.1),  # fraud_rate
+                0,  # total_transactions
+                0.0,  # avg_transaction_amount
+                bool(np.random.choice([True, False], p=[0.1, 0.9])),  # is_high_risk
+                'COMPLIANT',  # compliance_status
+                datetime.now(timezone.utc),  # created_at
+                datetime.now(timezone.utc)  # updated_at
             ))
         
         # Prepare transactions data
@@ -358,7 +355,7 @@ def load_massive_csv_data(conn, csv_file):
                 chunk[chunk['transaction_id'] == row['transaction_id']]['category'].iloc[0],
                 f"Transaction at {row['merchant_id']}",
                 f"REF_{uuid.uuid4().hex[:12].upper()}",
-                'COMPLETED',
+                'APPROVED',
                 timestamp + timedelta(milliseconds=np.random.randint(10, 500)),
                 None,
                 None,
@@ -383,14 +380,14 @@ def load_massive_csv_data(conn, csv_file):
             # Insert merchants
             if merchants_data:
                 execute_batch(cur, """
-                    INSERT INTO merchants (id, merchant_id, merchant_name, business_type, category, subcategory,
-                                         mcc_code, country, state_province, city, postal_code, latitude, longitude,
-                                         business_registration_date, risk_score, fraud_rate, transaction_count,
-                                         total_volume, avg_transaction_amount, monthly_volume, chargeback_rate,
-                                         is_high_risk, compliance_status, created_at, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO merchants (id, merchant_id, business_name, business_type, category,
+                                         mcc, country, state_province, city, postal_code,
+                                         registration_date, risk_score, fraud_rate, total_transactions,
+                                         avg_transaction_amount, is_high_risk, compliance_status, 
+                                         created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (merchant_id) DO NOTHING
-                """, merchants_data, page_size=1000)
+                """, merchants_data, page_size=100)
             
             # Insert transactions
             if transactions_data:
@@ -407,7 +404,7 @@ def load_massive_csv_data(conn, csv_file):
                                             created_at, updated_at)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (transaction_id, transaction_timestamp) DO NOTHING
-                """, transactions_data, page_size=1000)
+                """, transactions_data, page_size=100)
             
             conn.commit()
             total_rows += len(chunk)

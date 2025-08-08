@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # =====================================================
   # CORE DATABASES
@@ -159,7 +157,7 @@ services:
 
   # Apache Kafka - Message Streaming
   kafka:
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:7.4.0
     container_name: fraud_kafka
     environment:
       KAFKA_BROKER_ID: 1
@@ -191,11 +189,12 @@ services:
 
   # Zookeeper for Kafka
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
+    image: confluentinc/cp-zookeeper:7.4.0
     container_name: fraud_zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_SYNC_LIMIT: 2
     ports:
       - "2181:2181"
     volumes:
@@ -328,27 +327,23 @@ services:
     networks:
       - fraud_network
 
-  # Enhanced Streamlit Dashboard
-  fraud-dashboard:
+  # Streamlit Frontend Dashboard
+  fraud-frontend:
     build:
       context: .
-      dockerfile: Dockerfile.dashboard
-    container_name: fraud_dashboard_enhanced
+      dockerfile: Dockerfile.streamlit
+    container_name: fraud_frontend_streamlit
     environment:
-      FRAUD_API_URL: http://fraud-api:8080
-      NEO4J_URL: bolt://neo4j:7687
-      NEO4J_USER: neo4j
-      NEO4J_PASSWORD: FraudGraph2024!
-      REDIS_URL: redis://:RedisStack2024!@redis:6379
-      ELASTICSEARCH_URL: http://elasticsearch:9200
-      GRAFANA_URL: http://grafana:3000
+      API_URL: http://fraud-api:8080
+      STREAMLIT_SERVER_PORT: 8501
+      STREAMLIT_SERVER_ADDRESS: 0.0.0.0
     ports:
       - "8501:8501"
     depends_on:
       - fraud-api
     volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
+      - ./streamlit_app.py:/app/streamlit_app.py:ro
+      - ./streamlit_requirements.txt:/app/requirements.txt:ro
     networks:
       - fraud_network
 

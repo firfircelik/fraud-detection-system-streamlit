@@ -13,10 +13,13 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy source code
-COPY src/ ./src/
+COPY backend/ ./backend/
 
 # Create logs directory
 RUN mkdir -p /app/logs
 
+# Set Python path
+ENV PYTHONPATH=/app:/app/backend
+
 # Run feature engine
-CMD ["python", "-m", "src.streaming.feature_engine"]
+CMD ["python", "-m", "backend.streaming.feature_engine"]
