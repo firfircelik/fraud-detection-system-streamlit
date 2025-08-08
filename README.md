@@ -2,7 +2,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.116+-green.svg)](https://fastapi.tiangolo.com)
-[![Next.js](https://img.shields.io/badge/Next.js-14+-black.svg)](https://nextjs.org)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.28+-red.svg)](https://streamlit.io)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-blue.svg)](https://postgresql.org)
 [![Redis](https://img.shields.io/badge/Redis-7+-red.svg)](https://redis.io)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://docker.com)
@@ -69,7 +69,7 @@ fraud-detection-system/
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Next.js       │    │   FastAPI       │    │   PostgreSQL    │
+│   Streamlit     │    │   FastAPI       │    │   PostgreSQL    │
 │   Dashboard     │◄──►│   Backend       │◄──►│   Database      │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
@@ -116,7 +116,7 @@ cd fraud-detection-system-streamlit
 docker-compose up -d
 
 # Access services
-# Backend API: http://localhost:8000
+# Backend API: http://localhost:8080
 # Streamlit Frontend: http://localhost:8501
 # Database: localhost:5432
 # Redis: localhost:6379
@@ -194,7 +194,29 @@ The system automatically detects fraud patterns using:
 
 ## 🌟 Screenshots
 
-[Add screenshots of your dashboard here]
+### 📊 Main Dashboard
+![Main Dashboard](screenshots/main-dashboard.png)
+*Real-time fraud detection dashboard with transaction monitoring, risk scores, and alert management*
+
+### 📈 Analytics & Insights
+![Analytics Dashboard](screenshots/analytics-dashboard.png)
+*Advanced analytics with fraud patterns, geographical analysis, and performance metrics*
+
+### 🔍 Transaction Details
+![Transaction Analysis](screenshots/transaction-details.png)
+*Detailed transaction analysis with feature breakdown and ML model explanations*
+
+### 🌐 Graph Network Analysis
+![Graph Analysis](screenshots/graph-analysis.png)
+*Interactive graph visualization showing fraud rings and suspicious relationship patterns*
+
+### ⚙️ Model Performance
+![Model Performance](screenshots/model-performance.png)
+*ML model performance metrics, accuracy trends, and ensemble model insights*
+
+### 🚨 Real-time Alerts
+![Real-time Alerts](screenshots/real-time-alerts.png)
+*Live fraud alerts with risk assessment and automated response recommendations*
 
 ## 🤝 Contributing
 
@@ -216,7 +238,7 @@ This project is licensed under the MIT License.
 
 ---
 
-**Built with ❤️ using FastAPI + Next.js Enterprise Stack**
+**Built with ❤️ using FastAPI + Streamlit Enterprise Stack**
 
 ### 💻 Manual Setup
 
@@ -238,15 +260,36 @@ uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 ```bash
 # Option 1: Use pre-built image from GitHub Container Registry
 docker pull ghcr.io/firfircelik/fraud-detection-system-streamlit/fraud-backend:latest
-docker run -p 8000:8000 ghcr.io/firfircelik/fraud-detection-system-streamlit/fraud-backend:latest
+docker run -p 8080:8080 ghcr.io/firfircelik/fraud-detection-system-streamlit/fraud-backend:latest
 
 # Option 2: Build locally
 docker build -f docker/Dockerfile.backend -t fraud-backend .
-docker run -p 8000:8000 fraud-backend
+docker run -p 8080:8080 fraud-backend
 
 # Option 3: Full stack with all databases
 docker-compose -f docker-compose.yml up -d
 ```
+
+### 📊 Data Generation & Management
+
+```bash
+# Generate synthetic fraud data (Fixed numpy compatibility issues)
+python scripts/generate_data.py
+
+# Load massive datasets for testing
+python scripts/load_massive_data.py
+
+# Check current database status
+python backend/check_data.py
+
+# Install required dependencies for data generation
+pip install tqdm numpy pandas
+```
+
+**Note**: The data generation script has been updated to fix:
+- NumPy array compatibility issues with `numpy.random.choice()`
+- Timedelta type conversion errors for Python 3.9+
+- Improved synthetic data quality and distribution
 
 ## 📂 Clean & Organized Project Structure
 
@@ -264,10 +307,7 @@ fraud-detection-system-streamlit/
 │   ├── database/                    # Database utilities
 │   ├── cache/                       # Redis caching layer
 │   └── requirements.txt             # Backend dependencies
-├── 📂 frontend/                     # Next.js dashboard (development)
-│   ├── src/                         # React components
-│   ├── pages/                       # Next.js pages
-│   └── package.json                 # Frontend dependencies
+├── 📄 streamlit_app.py              # Streamlit interactive dashboard
 ├── 🔧 scripts/                      # Automation scripts
 │   ├── deploy.sh                    # Deployment script
 │   ├── generate_data.py             # Test data generator
@@ -295,8 +335,8 @@ fraud-detection-system-streamlit/
 
 | Service               | URL                   | Description                    |
 | --------------------- | --------------------- | ------------------------------ |
-| **FastAPI Backend**   | http://localhost:8000 | REST API endpoints             |
-| **API Documentation** | http://localhost:8000/docs | Interactive API docs       |
+| **FastAPI Backend**   | http://localhost:8080 | REST API endpoints             |
+| **API Documentation** | http://localhost:8080/docs | Interactive API docs       |
 | **Streamlit Frontend** | http://localhost:8501 | Interactive dashboard |
 | **PostgreSQL**        | localhost:5432        | Main database                  |
 | **Redis Cache**       | localhost:6379        | Caching layer                  |
@@ -371,7 +411,7 @@ fraud-detection-system-streamlit/
 ```bash
 # FastAPI settings
 export API_HOST=0.0.0.0
-export API_PORT=8000
+export API_PORT=8080
 export LOG_LEVEL=info
 
 # Database connections
@@ -435,19 +475,25 @@ docker-compose up -d
 make db-migrate     # Run database migrations
 make db-seed        # Seed with sample data
 
+# Data management (Updated)
+python backend/check_data.py      # Check current database status
+python scripts/generate_data.py   # Generate synthetic fraud data
+python scripts/load_massive_data.py # Load large datasets
+make sample-data                   # Generate test data
+make clean                         # Clean temporary files
+
 # Code quality
 make format         # Format code with black
 make lint           # Run linting with flake8
 make test           # Run tests with pytest
 
-# Data management
-make sample-data    # Generate test data
-make clean          # Clean temporary files
-
 # System maintenance
 make check          # System requirements check
 make info           # System information
 make logs           # View application logs
+
+# Dependencies for data generation
+pip install tqdm numpy pandas     # Required for data scripts
 ```
 
 ## 📈 Performance & Scalability
@@ -476,7 +522,7 @@ make logs           # View application logs
 
 ```bash
 # Check port usage
-lsof -i :8000
+lsof -i :8080
 
 # Use alternative port
 uvicorn api.main:app --port 8001
@@ -491,6 +537,9 @@ docker-compose ps
 # Reset databases
 docker-compose down -v
 docker-compose up -d
+
+# Check current data status
+python backend/check_data.py
 ```
 
 ### Module Not Found
@@ -500,6 +549,43 @@ docker-compose up -d
 source fraud-env/bin/activate
 cd backend
 pip install -r requirements.txt
+
+# Install data generation dependencies
+pip install tqdm numpy pandas
+```
+
+### Data Generation Issues
+
+```bash
+# Fix NumPy compatibility errors
+# The generate_data.py script has been updated to handle:
+# - numpy.random.choice() array dimension issues
+# - timedelta type conversion for Python 3.9+
+
+# If you encounter "ValueError: a must be 1-dimensional"
+# The script now properly handles city_centers selection
+
+# If you encounter "TypeError: unsupported type for timedelta"
+# The script now converts numpy.int64 to Python int
+
+# Check if tables are empty
+python backend/check_data.py
+
+# Generate fresh data
+python scripts/generate_data.py
+```
+
+### Database Table Status
+
+```bash
+# Current database contains:
+# - transactions: 2,700,000 records (3.0% fraud rate)
+# - users: 2,332,135 records
+# - model_performance: 4 records
+# - Other tables may be empty and need data generation
+
+# To populate empty tables, run:
+python scripts/generate_data.py
 ```
 
 ## 📚 Documentation
@@ -544,4 +630,4 @@ MIT License - See LICENSE file for details.
 
 ---
 
-🚨 **Enterprise FastAPI + Next.js Architecture** - Production-ready fraud detection system with advanced ML capabilities!
+🚨 **Enterprise FastAPI + Streamlit Architecture** - Production-ready fraud detection system with advanced ML capabilities!

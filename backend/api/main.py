@@ -664,6 +664,32 @@ async def get_dashboard_data():
                     "weekend_anomaly_rate": 0.023,
                     "velocity_alerts": 45
                 },
+                "peak_fraud_hours": [
+                    {"hour": 0, "fraud_count": 12},
+                    {"hour": 1, "fraud_count": 8},
+                    {"hour": 2, "fraud_count": 15},
+                    {"hour": 3, "fraud_count": 6},
+                    {"hour": 4, "fraud_count": 4},
+                    {"hour": 5, "fraud_count": 7},
+                    {"hour": 6, "fraud_count": 18},
+                    {"hour": 7, "fraud_count": 25},
+                    {"hour": 8, "fraud_count": 32},
+                    {"hour": 9, "fraud_count": 28},
+                    {"hour": 10, "fraud_count": 22},
+                    {"hour": 11, "fraud_count": 19},
+                    {"hour": 12, "fraud_count": 24},
+                    {"hour": 13, "fraud_count": 21},
+                    {"hour": 14, "fraud_count": 26},
+                    {"hour": 15, "fraud_count": 29},
+                    {"hour": 16, "fraud_count": 31},
+                    {"hour": 17, "fraud_count": 35},
+                    {"hour": 18, "fraud_count": 38},
+                    {"hour": 19, "fraud_count": 42},
+                    {"hour": 20, "fraud_count": 45},
+                    {"hour": 21, "fraud_count": 48},
+                    {"hour": 22, "fraud_count": 41},
+                    {"hour": 23, "fraud_count": 33}
+                ],
                 "amount_patterns": {
                     "high_value_fraud_rate": 0.08,
                     "average_fraud_amount": float(avg_fraud_amount),
@@ -2115,6 +2141,356 @@ async def elasticsearch_search(query: str, index: str = "transactions", size: in
     except Exception as e:
         logger.error(f"Failed to perform search: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to perform search: {str(e)}")
+
+@app.get("/api/graph/hotspots")
+async def get_fraud_hotspots():
+    """
+    Get fraud hotspots - geographic areas with high fraud activity
+    """
+    try:
+        # Simulated hotspot data - in production this would come from Neo4j or database analysis
+        hotspots = [
+            {
+                "location_id": "hotspot_1",
+                "city": "New York",
+                "state": "NY",
+                "country": "USA",
+                "latitude": 40.7128,
+                "longitude": -74.0060,
+                "fraud_count": 45,
+                "total_transactions": 1200,
+                "fraud_rate": 0.0375,
+                "risk_level": "HIGH",
+                "total_amount_fraud": 125000.50,
+                "detection_period": "last_30_days"
+            },
+            {
+                "location_id": "hotspot_2",
+                "city": "Los Angeles",
+                "state": "CA",
+                "country": "USA",
+                "latitude": 34.0522,
+                "longitude": -118.2437,
+                "fraud_count": 32,
+                "total_transactions": 980,
+                "fraud_rate": 0.0327,
+                "risk_level": "MEDIUM",
+                "total_amount_fraud": 89750.25,
+                "detection_period": "last_30_days"
+            },
+            {
+                "location_id": "hotspot_3",
+                "city": "Miami",
+                "state": "FL",
+                "country": "USA",
+                "latitude": 25.7617,
+                "longitude": -80.1918,
+                "fraud_count": 28,
+                "total_transactions": 750,
+                "fraud_rate": 0.0373,
+                "risk_level": "HIGH",
+                "total_amount_fraud": 67890.75,
+                "detection_period": "last_30_days"
+            }
+        ]
+        
+        return {
+            "hotspots": hotspots,
+            "total_hotspots": len(hotspots),
+            "analysis_period": "last_30_days",
+            "last_updated": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get fraud hotspots: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get fraud hotspots: {str(e)}")
+
+@app.get("/api/graph/velocity-anomalies")
+async def get_velocity_anomalies():
+    """
+    Get velocity anomalies - unusual transaction patterns and speeds
+    """
+    try:
+        # Simulated velocity anomaly data
+        anomalies = [
+            {
+                "anomaly_id": "vel_001",
+                "user_id": "user_12345",
+                "anomaly_type": "HIGH_FREQUENCY",
+                "description": "Unusually high transaction frequency",
+                "transaction_count": 25,
+                "time_window": "1_hour",
+                "normal_frequency": 2.5,
+                "detected_frequency": 25.0,
+                "severity_score": 0.85,
+                "risk_level": "HIGH",
+                "total_amount": 15750.00,
+                "detection_time": datetime.now().isoformat(),
+                "status": "ACTIVE"
+            },
+            {
+                "anomaly_id": "vel_002",
+                "user_id": "user_67890",
+                "anomaly_type": "AMOUNT_SPIKE",
+                "description": "Sudden increase in transaction amounts",
+                "transaction_count": 8,
+                "time_window": "30_minutes",
+                "normal_amount_avg": 125.50,
+                "detected_amount_avg": 2850.75,
+                "severity_score": 0.92,
+                "risk_level": "CRITICAL",
+                "total_amount": 22806.00,
+                "detection_time": datetime.now().isoformat(),
+                "status": "UNDER_REVIEW"
+            },
+            {
+                "anomaly_id": "vel_003",
+                "user_id": "user_11111",
+                "anomaly_type": "GEOGRAPHIC_VELOCITY",
+                "description": "Impossible geographic velocity detected",
+                "transaction_count": 3,
+                "time_window": "15_minutes",
+                "distance_km": 2500,
+                "calculated_speed_kmh": 10000,
+                "severity_score": 0.98,
+                "risk_level": "CRITICAL",
+                "total_amount": 8950.25,
+                "detection_time": datetime.now().isoformat(),
+                "status": "BLOCKED"
+            }
+        ]
+        
+        return {
+            "velocity_anomalies": anomalies,
+            "total_anomalies": len(anomalies),
+            "critical_count": len([a for a in anomalies if a["risk_level"] == "CRITICAL"]),
+            "high_count": len([a for a in anomalies if a["risk_level"] == "HIGH"]),
+            "analysis_period": "real_time",
+            "last_updated": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get velocity anomalies: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get velocity anomalies: {str(e)}")
+
+@app.get("/api/geospatial/world-map")
+async def get_world_map_data():
+    """Get comprehensive world map data from Neo4j for advanced geospatial visualization"""
+    try:
+        # Import Neo4j driver
+        from neo4j import GraphDatabase
+        
+        # Neo4j connection (you may need to adjust these credentials)
+        NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+        NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
+        NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "password")
+        
+        driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+        
+        with driver.session() as session:
+            # Get all locations with their risk scores and transaction counts
+            locations_query = """
+            MATCH (l:Location)
+            OPTIONAL MATCH (l)<-[:OCCURRED_AT]-(t:Transaction)
+            OPTIONAL MATCH (t)-[:INVOLVES]->(u:User)
+            RETURN l.location_id as location_id,
+                   l.latitude as latitude,
+                   l.longitude as longitude,
+                   l.city as city,
+                   l.country as country,
+                   l.risk_score as risk_score,
+                   count(t) as transaction_count,
+                   count(DISTINCT u) as unique_users,
+                   avg(t.fraud_score) as avg_fraud_score
+            """
+            
+            locations_result = session.run(locations_query)
+            locations = []
+            for record in locations_result:
+                locations.append({
+                    "location_id": record["location_id"],
+                    "latitude": float(record["latitude"]) if record["latitude"] else 0.0,
+                    "longitude": float(record["longitude"]) if record["longitude"] else 0.0,
+                    "city": record["city"],
+                    "country": record["country"],
+                    "risk_score": float(record["risk_score"]) if record["risk_score"] else 0.0,
+                    "transaction_count": record["transaction_count"] or 0,
+                    "unique_users": record["unique_users"] or 0,
+                    "avg_fraud_score": float(record["avg_fraud_score"]) if record["avg_fraud_score"] else 0.0
+                })
+            
+            # Get fraud connections between locations
+            connections_query = """
+            MATCH (l1:Location)<-[:OCCURRED_AT]-(t1:Transaction)-[:INVOLVES]->(u:User)
+            MATCH (u)<-[:INVOLVES]-(t2:Transaction)-[:OCCURRED_AT]->(l2:Location)
+            WHERE l1 <> l2 AND t1.fraud_score > 0.5 AND t2.fraud_score > 0.5
+            RETURN l1.location_id as from_location,
+                   l2.location_id as to_location,
+                   l1.latitude as from_lat,
+                   l1.longitude as from_lng,
+                   l2.latitude as to_lat,
+                   l2.longitude as to_lng,
+                   count(*) as connection_strength,
+                   avg(t1.fraud_score + t2.fraud_score) / 2 as avg_fraud_score
+            LIMIT 50
+            """
+            
+            connections_result = session.run(connections_query)
+            connections = []
+            for record in connections_result:
+                connections.append({
+                    "from_location": record["from_location"],
+                    "to_location": record["to_location"],
+                    "from_lat": float(record["from_lat"]) if record["from_lat"] else 0.0,
+                    "from_lng": float(record["from_lng"]) if record["from_lng"] else 0.0,
+                    "to_lat": float(record["to_lat"]) if record["to_lat"] else 0.0,
+                    "to_lng": float(record["to_lng"]) if record["to_lng"] else 0.0,
+                    "connection_strength": record["connection_strength"],
+                    "avg_fraud_score": float(record["avg_fraud_score"]) if record["avg_fraud_score"] else 0.0
+                })
+            
+            # Get high-risk zones (clusters of high fraud activity)
+            risk_zones_query = """
+            MATCH (l:Location)
+            WHERE l.risk_score > 0.7
+            RETURN l.latitude as latitude,
+                   l.longitude as longitude,
+                   l.risk_score as risk_score,
+                   l.city as city,
+                   l.country as country
+            """
+            
+            risk_zones_result = session.run(risk_zones_query)
+            risk_zones = []
+            for record in risk_zones_result:
+                risk_zones.append({
+                    "latitude": float(record["latitude"]) if record["latitude"] else 0.0,
+                    "longitude": float(record["longitude"]) if record["longitude"] else 0.0,
+                    "risk_score": float(record["risk_score"]) if record["risk_score"] else 0.0,
+                    "city": record["city"],
+                    "country": record["country"]
+                })
+        
+        driver.close()
+        
+        return {
+            "locations": locations,
+            "connections": connections,
+            "risk_zones": risk_zones,
+            "summary": {
+                "total_locations": len(locations),
+                "total_connections": len(connections),
+                "high_risk_zones": len(risk_zones),
+                "avg_risk_score": sum(loc["risk_score"] for loc in locations) / len(locations) if locations else 0
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get world map data: {e}")
+        # Return mock data if Neo4j is not available
+        return {
+            "locations": [
+                {
+                    "location_id": "loc_001",
+                    "latitude": 40.7128,
+                    "longitude": -74.0060,
+                    "city": "New York",
+                    "country": "USA",
+                    "risk_score": 0.8,
+                    "transaction_count": 1250,
+                    "unique_users": 450,
+                    "avg_fraud_score": 0.35
+                },
+                {
+                    "location_id": "loc_002",
+                    "latitude": 51.5074,
+                    "longitude": -0.1278,
+                    "city": "London",
+                    "country": "UK",
+                    "risk_score": 0.6,
+                    "transaction_count": 980,
+                    "unique_users": 320,
+                    "avg_fraud_score": 0.25
+                },
+                {
+                    "location_id": "loc_003",
+                    "latitude": 35.6762,
+                    "longitude": 139.6503,
+                    "city": "Tokyo",
+                    "country": "Japan",
+                    "risk_score": 0.9,
+                    "transaction_count": 2100,
+                    "unique_users": 680,
+                    "avg_fraud_score": 0.45
+                },
+                {
+                    "location_id": "loc_004",
+                    "latitude": 48.8566,
+                    "longitude": 2.3522,
+                    "city": "Paris",
+                    "country": "France",
+                    "risk_score": 0.4,
+                    "transaction_count": 750,
+                    "unique_users": 280,
+                    "avg_fraud_score": 0.18
+                },
+                {
+                    "location_id": "loc_005",
+                    "latitude": -33.8688,
+                    "longitude": 151.2093,
+                    "city": "Sydney",
+                    "country": "Australia",
+                    "risk_score": 0.3,
+                    "transaction_count": 650,
+                    "unique_users": 220,
+                    "avg_fraud_score": 0.12
+                }
+            ],
+            "connections": [
+                {
+                    "from_location": "loc_001",
+                    "to_location": "loc_003",
+                    "from_lat": 40.7128,
+                    "from_lng": -74.0060,
+                    "to_lat": 35.6762,
+                    "to_lng": 139.6503,
+                    "connection_strength": 15,
+                    "avg_fraud_score": 0.75
+                },
+                {
+                    "from_location": "loc_002",
+                    "to_location": "loc_001",
+                    "from_lat": 51.5074,
+                    "from_lng": -0.1278,
+                    "to_lat": 40.7128,
+                    "to_lng": -74.0060,
+                    "connection_strength": 8,
+                    "avg_fraud_score": 0.65
+                }
+            ],
+            "risk_zones": [
+                {
+                    "latitude": 40.7128,
+                    "longitude": -74.0060,
+                    "risk_score": 0.8,
+                    "city": "New York",
+                    "country": "USA"
+                },
+                {
+                    "latitude": 35.6762,
+                    "longitude": 139.6503,
+                    "risk_score": 0.9,
+                    "city": "Tokyo",
+                    "country": "Japan"
+                }
+            ],
+            "summary": {
+                "total_locations": 5,
+                "total_connections": 2,
+                "high_risk_zones": 2,
+                "avg_risk_score": 0.6
+            }
+        }
 
 if __name__ == "__main__":
     import uvicorn

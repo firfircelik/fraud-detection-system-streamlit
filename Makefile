@@ -40,7 +40,7 @@ dev:
 	@echo "Starting Next.js frontend..."
 	cd frontend && npm run dev &
 	@echo "✅ Development environment ready:"
-	@echo "   Frontend: http://localhost:3000"
+	@echo "   Frontend: http://localhost:8501"
 	@echo "   API: http://localhost:8080"
 
 # Start API only
@@ -58,15 +58,15 @@ docker:
 	@echo "🐳 Starting Docker deployment..."
 	docker-compose up -d
 	@echo "✅ Services started:"
-	@echo "   Frontend: http://localhost:3000"
+	@echo "   Frontend: http://localhost:8501"
 	@echo "   API: http://localhost:8080"
-	@echo "   PostgreSQL: localhost:5434"
+	@echo "   PostgreSQL: localhost:5432"
 	@echo "   Neo4j: localhost:7474"
 	@echo "   Redis: localhost:6379"
 	@echo "   TimescaleDB: localhost:5433"
 	@echo "   Elasticsearch: localhost:9200"
 	@echo "   Prometheus: http://localhost:9090"
-	@echo "   Grafana: http://localhost:3001"
+	@echo "   Grafana: http://localhost:3000"
 
 # Build Docker images
 build:
