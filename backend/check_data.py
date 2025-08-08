@@ -1,13 +1,14 @@
-import psycopg2
 import os
+
+import psycopg2
 
 # Database connection
 conn = psycopg2.connect(
-    host='localhost',
+    host="localhost",
     port=5432,
-    database='fraud_detection',
-    user='fraud_admin',
-    password='FraudDetection2024!'
+    database="fraud_detection",
+    user="fraud_admin",
+    password="FraudDetection2024!",
 )
 
 cur = conn.cursor()
@@ -16,13 +17,15 @@ print("📊 Database Table Status:")
 print("=" * 50)
 
 # First check what tables actually exist
-cur.execute("""
+cur.execute(
+    """
     SELECT table_name 
     FROM information_schema.tables 
     WHERE table_schema = 'public' 
     AND table_type = 'BASE TABLE'
     ORDER BY table_name
-""")
+"""
+)
 
 existing_tables = [row[0] for row in cur.fetchall()]
 print(f"Found {len(existing_tables)} tables in database:")
@@ -43,12 +46,13 @@ for table in existing_tables:
         print(f"{table:25} | ERROR: {str(e)}")
 
 # Check transactions specifically
-if 'transactions' in existing_tables:
+if "transactions" in existing_tables:
     print("\n🔍 Transaction Analysis:")
     print("=" * 50)
-    
+
     try:
-        cur.execute("""
+        cur.execute(
+            """
             SELECT 
                 COUNT(*) as total,
                 COUNT(CASE WHEN is_fraud = true THEN 1 END) as fraud_count,
@@ -57,8 +61,9 @@ if 'transactions' in existing_tables:
                 MAX(created_at) as newest
             FROM transactions
             LIMIT 1
-        """)
-        
+        """
+        )
+
         result = cur.fetchone()
         if result and result[0] > 0:
             total, fraud, normal, oldest, newest = result

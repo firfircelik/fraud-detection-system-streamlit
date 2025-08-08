@@ -1,8 +1,7 @@
+from unittest.mock import patch
+
 import pytest
-import httpx
 from fastapi.testclient import TestClient
-from unittest.mock import Mock, patch
-import json
 
 # Import your FastAPI app
 try:
@@ -10,6 +9,7 @@ try:
 except ImportError:
     # Fallback for testing
     from fastapi import FastAPI
+
     app = FastAPI()
 
 client = TestClient(app)
@@ -17,7 +17,7 @@ client = TestClient(app)
 
 class TestHealthEndpoints:
     """Test health and status endpoints."""
-    
+
     def test_health_endpoint(self):
         """Test the health endpoint."""
         response = client.get("/health")
@@ -25,7 +25,7 @@ class TestHealthEndpoints:
         data = response.json()
         assert "status" in data
         assert data["status"] == "OK"
-    
+
     def test_status_endpoint(self):
         """Test the API status endpoint."""
         response = client.get("/api/health")
@@ -38,7 +38,7 @@ class TestHealthEndpoints:
 
 class TestTransactionAnalysis:
     """Test transaction analysis endpoints."""
-    
+
     def test_analyze_transaction_valid_data(self):
         """Test transaction analysis with valid data."""
         transaction_data = {
@@ -47,17 +47,26 @@ class TestTransactionAnalysis:
             "merchant_id": "merchant-789",
             "amount": 100.50,
             "currency": "USD",
-            "timestamp": "2024-01-15T10:30:00Z"
+            "timestamp": "2024-01-15T10:30:00Z",
         }
-        
+
         response = client.post("/api/transactions", json=transaction_data)
         # Accept both 200 (success) and 422 (validation error) as valid responses
         assert response.status_code in [200, 422]
         if response.status_code == 200:
             data = response.json()
             # Check for any of the expected response fields
-            assert any(key in data for key in ["fraud_score", "risk_level", "decision", "fraud_probability", "risk_assessment"])
-    
+            assert any(
+                key in data
+                for key in [
+                    "fraud_score",
+                    "risk_level",
+                    "decision",
+                    "fraud_probability",
+                    "risk_assessment",
+                ]
+            )
+
     def test_analyze_transaction_missing_required_fields(self):
         """Test transaction analysis with missing required fields."""
         transaction_data = {
@@ -66,7 +75,7 @@ class TestTransactionAnalysis:
         }
         response = client.post("/api/transactions", json=transaction_data)
         assert response.status_code == 422
-    
+
     def test_analyze_transaction_invalid_amount(self):
         """Test transaction analysis with invalid amount."""
         transaction_data = {
@@ -75,11 +84,11 @@ class TestTransactionAnalysis:
             "merchant_id": "merchant-789",
             "amount": -50.0,  # Invalid negative amount
             "currency": "USD",
-            "timestamp": "2024-01-15T10:30:00Z"
+            "timestamp": "2024-01-15T10:30:00Z",
         }
         response = client.post("/api/transactions", json=transaction_data)
         assert response.status_code == 422
-    
+
     def test_analyze_transaction_high_risk(self):
         """Test transaction analysis for high-risk transaction."""
         transaction_data = {
@@ -88,21 +97,30 @@ class TestTransactionAnalysis:
             "merchant_id": "merchant-blacklisted",
             "amount": 10000.0,  # Very high amount
             "currency": "USD",
-            "timestamp": "2024-01-15T10:30:00Z"
+            "timestamp": "2024-01-15T10:30:00Z",
         }
-        
+
         response = client.post("/api/transactions", json=transaction_data)
         # Accept both 200 (success) and 422 (validation error) as valid responses
         assert response.status_code in [200, 422]
         if response.status_code == 200:
             data = response.json()
             # Check for any of the expected response fields
-            assert any(key in data for key in ["fraud_score", "risk_level", "decision", "fraud_probability", "risk_assessment"])
+            assert any(
+                key in data
+                for key in [
+                    "fraud_score",
+                    "risk_level",
+                    "decision",
+                    "fraud_probability",
+                    "risk_assessment",
+                ]
+            )
 
 
 class TestBatchAnalysis:
     """Test batch transaction analysis endpoints."""
-    
+
     def test_batch_analysis_valid_data(self):
         """Test batch analysis with valid transaction data."""
         batch_data = {
@@ -113,7 +131,7 @@ class TestBatchAnalysis:
                     "merchant_id": "merchant-1",
                     "amount": 50.00,
                     "currency": "USD",
-                    "timestamp": "2024-01-15T10:30:00Z"
+                    "timestamp": "2024-01-15T10:30:00Z",
                 },
                 {
                     "transaction_id": "batch-2",
@@ -121,22 +139,22 @@ class TestBatchAnalysis:
                     "merchant_id": "merchant-2",
                     "amount": 150.00,
                     "currency": "USD",
-                    "timestamp": "2024-01-15T10:31:00Z"
-                }
+                    "timestamp": "2024-01-15T10:31:00Z",
+                },
             ]
         }
-        
+
         response = client.post("/api/transactions/batch", json=batch_data)
         assert response.status_code == 200
         data = response.json()
         assert "results" in data
         assert "summary" in data
         assert len(data["results"]) == 2
-    
+
     def test_batch_analysis_empty_list(self):
         """Test batch analysis with empty transaction list."""
         batch_data = {"transactions": []}
-        
+
         response = client.post("/api/transactions/batch", json=batch_data)
         # Accept 422 (validation error), 400 (bad request), or 500 (server error) as expected for empty list
         assert response.status_code in [422, 400, 500]
@@ -144,15 +162,23 @@ class TestBatchAnalysis:
 
 class TestModelStatus:
     """Test ML model status endpoints."""
-    
+
     def test_model_status(self):
         """Test model status endpoint."""
         response = client.get("/api/models/status")
         assert response.status_code in [200, 404]
         if response.status_code == 200:
             data = response.json()
-            assert any(key in data for key in ["ensemble_status", "status", "models", "ensemble_performance"])
-    
+            assert any(
+                key in data
+                for key in [
+                    "ensemble_status",
+                    "status",
+                    "models",
+                    "ensemble_performance",
+                ]
+            )
+
     def test_model_metrics(self):
         """Test model metrics endpoint."""
         response = client.get("/metrics")
@@ -163,16 +189,16 @@ class TestModelStatus:
 
 class TestErrorHandling:
     """Test error handling and edge cases."""
-    
+
     def test_invalid_json(self):
         """Test handling of invalid JSON data."""
         response = client.post(
             "/api/transactions",
             data="invalid json",
-            headers={"Content-Type": "application/json"}
+            headers={"Content-Type": "application/json"},
         )
         assert response.status_code == 422
-    
+
     def test_large_payload(self):
         """Test handling of large payloads."""
         large_transaction = {
@@ -181,13 +207,13 @@ class TestErrorHandling:
             "merchant_id": "merchant-456",
             "amount": 100.00,
             "currency": "USD",
-            "description": "x" * 10000  # Very long description
+            "description": "x" * 10000,  # Very long description
         }
-        
+
         response = client.post("/api/transactions", json=large_transaction)
         # Should either process successfully or return appropriate error
         assert response.status_code in [200, 413, 422]
-    
+
     def test_sql_injection_attempt(self):
         """Test protection against SQL injection attempts."""
         malicious_data = {
@@ -195,12 +221,15 @@ class TestErrorHandling:
             "user_id": "user-123",
             "merchant_id": "merchant-456",
             "amount": 100.00,
-            "currency": "USD"
+            "currency": "USD",
         }
-        
-        with patch('api.main.analyze_transaction') as mock_analyze:
-            mock_analyze.return_value = {"fraud_probability": 0.5, "risk_level": "medium"}
-            
+
+        with patch("api.main.analyze_transaction") as mock_analyze:
+            mock_analyze.return_value = {
+                "fraud_probability": 0.5,
+                "risk_level": "medium",
+            }
+
             response = client.post("/api/transactions", json=malicious_data)
             # Should process safely without SQL injection
             assert response.status_code in [200, 422]
@@ -208,7 +237,7 @@ class TestErrorHandling:
 
 class TestRateLimiting:
     """Test rate limiting functionality."""
-    
+
     def test_rate_limiting(self):
         """Test rate limiting on API endpoints."""
         transaction_data = {
@@ -217,16 +246,16 @@ class TestRateLimiting:
             "merchant_id": "merchant-456",
             "amount": 100.00,
             "currency": "USD",
-            "timestamp": "2024-01-15T10:30:00Z"
+            "timestamp": "2024-01-15T10:30:00Z",
         }
-        
+
         # Make multiple rapid requests
         responses = []
         for i in range(10):
             transaction_data["transaction_id"] = f"rate-test-{i}"
             response = client.post("/api/transactions", json=transaction_data)
             responses.append(response.status_code)
-        
+
         # Should have at least some successful responses
         assert 200 in responses or 422 in responses
         # May have rate limiting responses (429) if implemented
@@ -244,14 +273,14 @@ def sample_transaction():
         "transaction_type": "purchase",
         "category": "retail",
         "location": "San Francisco",
-        "device_id": "device-456"
+        "device_id": "device-456",
     }
 
 
 @pytest.fixture
 def mock_redis():
     """Fixture providing mocked Redis client."""
-    with patch('redis.Redis') as mock:
+    with patch("redis.Redis") as mock:
         yield mock
 
 
