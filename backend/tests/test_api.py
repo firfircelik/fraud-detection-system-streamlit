@@ -1,4 +1,12 @@
+import sys
+import os
 from unittest.mock import patch
+
+# Add the backend directory to Python path for proper imports
+current_dir = os.path.dirname(os.path.abspath(__file__))
+backend_dir = os.path.dirname(current_dir)
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
 
 import pytest
 from fastapi.testclient import TestClient
