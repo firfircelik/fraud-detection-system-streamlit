@@ -480,16 +480,10 @@ jobs:
         config-file: ./.github/codeql/codeql-config.yml
         setup-python-dependencies: false
         
-    - name: Manual Build (Skip Autobuild)
-      run: |
-        echo "Manual build step - dependencies already installed"
-        echo "Python version: $(python --version)"
-        echo "Python3 version: $(python3 --version)"
-        # Compile Python files to ensure they are valid
-        python -m py_compile backend/api/main.py
-        python -m py_compile streamlit_app.py
-        # Create a simple build marker
-        echo "Build completed at $(date)" > build_marker.txt
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v2
+      env:
+        CODEQL_PYTHON: python3
         
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
