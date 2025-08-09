@@ -173,35 +173,42 @@ class TestBatchAnalysis:
 class TestModelStatus:
     """Test ML model status endpoints."""
 
-    @patch('api.main.engine')
+    @patch("api.main.engine")
     def test_model_status_with_db(self, mock_engine):
         """Test model status endpoint with database connection."""
         # Mock database connection and query result
         mock_conn = MagicMock()
         mock_result = MagicMock()
-        mock_result.fetchone.return_value = ('RandomForest', 150, 0.85, 0.82, 0.88, 0.75)
+        mock_result.fetchone.return_value = (
+            "RandomForest",
+            150,
+            0.85,
+            0.82,
+            0.88,
+            0.75,
+        )
         mock_conn.execute.return_value = mock_result
         mock_conn.__enter__.return_value = mock_conn
         mock_conn.__exit__.return_value = None
         mock_engine.connect.return_value = mock_conn
-        
+
         response = client.get("/api/models/status")
         assert response.status_code == 200
         data = response.json()
         assert "models" in data
         assert "ensemble_performance" in data
         assert len(data["models"]) > 0
-        
+
     def test_model_status_without_db(self):
         """Test model status endpoint without database connection."""
-        with patch('api.main.engine', None):
+        with patch("api.main.engine", None):
             response = client.get("/api/models/status")
             # Should return 500 when no database connection
             assert response.status_code == 500
             data = response.json()
             assert "detail" in data
             assert "Failed to get models status from database" in data["detail"]
-            
+
     def test_model_status_fallback(self):
         """Test model status endpoint with database connection available."""
         response = client.get("/api/models/status")

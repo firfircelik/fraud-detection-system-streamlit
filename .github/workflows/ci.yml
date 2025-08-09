@@ -52,7 +52,9 @@ jobs:
       run: mypy backend/ --ignore-missing-imports
       
     - name: Run Bandit (Security Linting)
-      run: bandit -r backend/ -f json -o bandit-report.json || true
+      run: |
+        bandit -r backend/ -f json -o bandit-report.json || echo '{}' > bandit-report.json
+        ls -la bandit-report.json
       
     - name: Upload Bandit Report
       uses: actions/upload-artifact@v4
@@ -276,13 +278,13 @@ jobs:
       run: |
         docker build -t ghcr.io/${{ github.repository }}/fraud-detection-api:latest \
           -t ghcr.io/${{ github.repository }}/fraud-detection-api:${{ github.sha }} \
-          -f backend/Dockerfile .
+          -f backend/Dockerfile backend/
         
     - name: Build Streamlit Docker image
       run: |
         docker build -t ghcr.io/${{ github.repository }}/fraud-detection-streamlit:latest \
           -t ghcr.io/${{ github.repository }}/fraud-detection-streamlit:${{ github.sha }} \
-          -f Dockerfile .
+          -f streamlit.Dockerfile .
           
     - name: Test API Docker container
       run: |
@@ -476,12 +478,18 @@ jobs:
       with:
         languages: python
         config-file: ./.github/codeql/codeql-config.yml
+        setup-python-dependencies: false
         
     - name: Manual Build (Skip Autobuild)
       run: |
         echo "Manual build step - dependencies already installed"
+        echo "Python version: $(python --version)"
+        echo "Python3 version: $(python3 --version)"
+        # Compile Python files to ensure they are valid
         python -m py_compile backend/api/main.py
         python -m py_compile streamlit_app.py
+        # Create a simple build marker
+        echo "Build completed at $(date)" > build_marker.txt
         
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2

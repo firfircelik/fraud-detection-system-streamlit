@@ -12,18 +12,15 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements files
+# Copy requirements file
 COPY streamlit_requirements.txt .
-COPY backend/requirements.txt backend_requirements.txt
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r streamlit_requirements.txt && \
-    pip install --no-cache-dir -r backend_requirements.txt
+    pip install --no-cache-dir -r streamlit_requirements.txt
 
 # Copy application files
 COPY streamlit_app.py .
-COPY backend/ backend/
 COPY .streamlit/ .streamlit/
 
 # Create necessary directories

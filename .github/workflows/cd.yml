@@ -89,7 +89,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        file: ./Dockerfile
+        file: ./streamlit.Dockerfile
         push: true
         tags: ${{ steps.meta-streamlit.outputs.tags }}
         labels: ${{ steps.meta-streamlit.outputs.labels }}

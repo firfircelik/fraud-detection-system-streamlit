@@ -6,6 +6,11 @@ queries:
   - uses: security-and-quality
   - uses: security-extended
 
+# Python-specific configuration
+python:
+  version: "3.11"
+  setup-python-dependencies: false
+
 paths-ignore:
   - "**/test_*.py"
   - "**/tests/**"

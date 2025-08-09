@@ -23,13 +23,23 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 from scipy import stats
-from sklearn.ensemble import (ExtraTreesClassifier, GradientBoostingClassifier,
-                              RandomForestClassifier, StackingClassifier,
-                              VotingClassifier)
+from sklearn.ensemble import (
+    ExtraTreesClassifier,
+    GradientBoostingClassifier,
+    RandomForestClassifier,
+    StackingClassifier,
+    VotingClassifier,
+)
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import (accuracy_score, classification_report, f1_score,
-                             log_loss, precision_score, recall_score,
-                             roc_auc_score)
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    f1_score,
+    log_loss,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.svm import SVC
 

@@ -17,8 +17,13 @@ from typing import Any, Dict, List, Optional
 import aiohttp
 import asyncpg
 import psutil
-from prometheus_client import (CollectorRegistry, Counter, Gauge, Histogram,
-                               generate_latest)
+from prometheus_client import (
+    CollectorRegistry,
+    Counter,
+    Gauge,
+    Histogram,
+    generate_latest,
+)
 
 logger = logging.getLogger(__name__)
 
