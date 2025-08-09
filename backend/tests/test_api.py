@@ -1,6 +1,6 @@
-import sys
 import os
-from unittest.mock import patch, MagicMock
+import sys
+from unittest.mock import MagicMock, patch
 
 # Add backend directory to Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))

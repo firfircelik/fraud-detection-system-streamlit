@@ -4,27 +4,19 @@
 Advanced frontend showcasing all backend functionalities
 """
 
-import streamlit as st
-import requests
+import csv
+import time
+import uuid
+from datetime import datetime, timedelta
+from typing import Dict
+
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import numpy as np
-import json
-from datetime import datetime, timedelta
-import time
-import asyncio
-import threading
-import redis
 import psutil
-from typing import Dict, List, Any, Optional
-import uuid
-import hashlib
-from dataclasses import dataclass
-import base64
-from io import StringIO
-import csv
+import requests
+import streamlit as st
 
 # Page configuration
 st.set_page_config(
@@ -1098,8 +1090,6 @@ elif page == "🕸️ Fraud Ring Detection":
                 st.subheader("🕸️ Network Visualization")
                 if "members" in ring and ring["members"]:
                     # Create a simple network visualization using plotly
-                    import plotly.graph_objects as go
-                    import numpy as np
 
                     members = ring["members"]
                     n_members = len(members)
@@ -1610,10 +1600,10 @@ elif page == "🔎 Transaction Search":
                     st.dataframe(styled_df, use_container_width=True)
 
                     # Download option
-                    csv = results_df.to_csv(index=False)
+                    csv_data = results_df.to_csv(index=False)
                     st.download_button(
                         label="📥 Download Results as CSV",
-                        data=csv,
+                        data=csv_data,
                         file_name=f"fraud_search_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                         mime="text/csv",
                     )
@@ -2111,10 +2101,10 @@ elif page == "📋 CSV Batch Processing":
                         labels=["Low", "Medium", "High"],
                     )
 
-                    csv = df_sample.to_csv(index=False)
+                    csv_content = df_sample.to_csv(index=False)
                     st.download_button(
                         label="Download Processed CSV",
-                        data=csv,
+                        data=csv_content,
                         file_name=f"processed_{uploaded_file.name}",
                         mime="text/csv",
                     )
